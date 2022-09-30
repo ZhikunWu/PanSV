@@ -1,0 +1,70 @@
+
+######################################################## Quality control  ###########################################################
+rule fastp:
+    input:
+        R1 = IN_PATH + '/raw/{sample}.html_1.fastq.gz',
+        R2 = IN_PATH + '/raw/{sample}.html_2.fastq.gz',
+    output:
+        R1 = IN_PATH + '/clean/fastp/{sample}.clean.R1.fq.gz',
+        R2 = IN_PATH + '/clean/fastp/{sample}.clean.R2.fq.gz',
+    threads:
+        THREADS * threadFold
+    params:
+        length_required = config["length_required"],
+        qualified_quality_phred = config["qualified_quality_phred"],
+        unqualified_percent_limit = config["unqualified_percent_limit"],
+        cut_window_size = config["cut_window_size"],
+        cut_mean_quality = config["cut_mean_quality"],
+    log:
+        IN_PATH + "/log/trim/{sample}_fastp.log", 
+    run:
+        ### adapter parameter: --adaptersequence (read1), --adapter_sequence_r2(read2)
+        ### do not trim adapter: --disable_adapter_trimming
+        shell("fastp --in1 {input.R1} --in2 {input.R2} --out1 {output.R1} --out2 {output.R2} --thread {threads} --compression 2 --length_required {params.length_required} --qualified_quality_phred {params.qualified_quality_phred}  --unqualified_percent_limit {params.unqualified_percent_limit} --cut_front --cut_tail --cut_window_size {params.cut_window_size} --cut_mean_quality {params.cut_mean_quality} >{log} 2>&1")
+
+
+
+rule fastqc:
+    input:
+        clean_R1 = rules.fastp.output.R1,
+        clean_R2 = rules.fastp.output.R2,
+    output:
+        clean_R1 = IN_PATH + '/FastQC/clean/{sample}/{sample}.clean.R1_fastqc.zip',  
+        clean_R2 = IN_PATH + '/FastQC/clean/{sample}/{sample}.clean.R2_fastqc.zip',
+    threads:
+        THREADS
+    log:
+        clean = IN_PATH + "/log/fastqc/{sample}_clean.log",
+    params:
+        clean_dir = IN_PATH + '/FastQC/clean/{sample}',
+    run:
+        shell('fastqc --threads {threads} --extract -f fastq {input.clean_R1} {input.clean_R2} -o {params.clean_dir} > {log.clean} 2>&1 ')
+
+
+
+
+
+rule QCStats:
+    input:
+        clean_R1 = rules.fastp.output.R1,
+        clean_R2 = rules.fastp.output.R2,
+    output:
+        clean_R1 = IN_PATH + '/FastQC/clean/{sample}_R1_stats.xls',
+        clean_R2 = IN_PATH + '/FastQC/clean/{sample}_R2_stats.xls',
+        clean = IN_PATH + '/FastQC/clean/{sample}_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/{sample}_QCStats.log",
+    params:
+        FastxStatMerge = SRC_DIR + '/FastxStatMerge.py',
+        TrimStats = SRC_DIR + "/TrimStats.py",
+    run:
+        shell("seqstats {input.clean_R1} > {output.clean_R1}")
+        shell("seqstats {input.clean_R2} > {output.clean_R2}")
+        shell("python {params.FastxStatMerge} --stat {output.clean_R1} --stat2 {output.clean_R2} --sample {wildcards.sample} --out {output.clean} 2>>{log}")
+
+
+
+
+#####################################################################################################################################
