@@ -22,4 +22,8 @@
 
 ## datasets
 * [Chinese-Pangenome-Consortium-Phase-I](https://github.com/Shuhua-Group/Chinese-Pangenome-Consortium-Phase-I)
+* [human-pangenomics](https://github.com/human-pangenomics)
+* [HPP_Year1_Data_Freeze_v1.0](https://github.com/human-pangenomics/HPP_Year1_Data_Freeze_v1.0): The Human Pangenome Reference Consortium produced sequencing data for assembly of 30 samples
+* [pantranscriptomes](http://cgl.gi.ucsc.edu/data/vgrna/pantranscriptomes/)
+* [The International Genome Sample Resource](https://www.internationalgenome.org/data-portal/sample)
 
