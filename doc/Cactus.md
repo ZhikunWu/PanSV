@@ -378,3 +378,32 @@ arabidopsis_pg/
 ```
 
 
+#### GFA result
+
+```
+$ zcat /home/wuzhikun/Project/PanSV/Cactus/arabidopsis_pg/arabidopsis.gfa.gz | grep '^W' | awk '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 }' | more
+W	An-1	0	An-1.chr5	0	10678994
+W	An-1	0	An-1.chr5	10716401	11222484
+W	An-1	0	An-1.chr5	11241930	11602669
+W	An-1	0	An-1.chr5	11799108	11820069
+W	An-1	0	An-1.chr5	11839068	11841403
+W	An-1	0	An-1.chr5	11927352	26733864
+W	C24	0	C24.chr5	0	11277501
+W	C24	0	C24.chr5	11299752	11453757
+W	C24	0	C24.chr5	11529598	11772383
+W	C24	0	C24.chr5	11797233	11896490
+W	C24	0	C24.chr5	11915670	12112310
+W	C24	0	C24.chr5	12139261	12199771
+W	C24	0	C24.chr5	12228129	19408545
+W	C24	0	C24.chr5	19444665	26063859
+W	Col	0	Col.Chr5	0	29480885
+W	Ler	0	Ler.chr5	0	11154226
+W	Ler	0	Ler.chr5	11174506	11211038
+W	Ler	0	Ler.chr5	11260114	11751930
+W	Ler	0	Ler.chr5	11921373	12303947
+W	Ler	0	Ler.chr5	12556515	12826658
+W	Ler	0	Ler.chr5	12974529	26592970
+
+```
+
+
