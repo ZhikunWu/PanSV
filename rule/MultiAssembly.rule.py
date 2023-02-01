@@ -174,7 +174,7 @@ rule NGSAlign:
         R1 = rules.fastp.output.R1,
         R2 = rules.fastp.output.R2,
     output:
-        bam = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted.bam",
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted.bam"),
     threads:
         THREADS
     log:
@@ -211,7 +211,8 @@ rule pilon:
 ########################## Referenced scaffold #########################
 rule RagTag:
     input:
-        contig = rules.pilon.output.contig,
+        # contig = rules.pilon.output.contig,
+        contig = rules.racon3.output.contig,
     output:
         scaffold = IN_PATH + "/Assembly/Scaffold/{sample}/ragtag.scaffold.fasta",
     params:
@@ -224,6 +225,7 @@ rule RagTag:
     run:
         shell("ragtag.py scaffold {params.RefGenome} {input.contig}  -o {params.outDir}  -w -u -t {threads} --aligner minimap2 > {log} 2>&1")
 ##############################################################
+
 
 
 ################## BUSCO ############

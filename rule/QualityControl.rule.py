@@ -2,11 +2,11 @@
 ######################### DNA Quality control  ####################################################
 rule fastp:
     input:
-        R1 = IN_PATH + '/raw/{sample}.html_1.fastq.gz',
-        R2 = IN_PATH + '/raw/{sample}.html_2.fastq.gz',
+        R1 = IN_PATH + '/raw/{sample}.DNA.R1.fastq.gz',
+        R2 = IN_PATH + '/raw/{sample}.DNA.R1.fastq.gz',
     output:
-        R1 = IN_PATH + '/clean/fastp/{sample}.clean.R1.fq.gz',
-        R2 = IN_PATH + '/clean/fastp/{sample}.clean.R2.fq.gz',
+        R1 = IN_PATH + '/clean/{sample}.DNA.R1.fastq.gz',
+        R2 = IN_PATH + '/clean/{sample}.DNA.R2.fastq.gz',
     threads:
         THREADS
     params:

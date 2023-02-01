@@ -4,8 +4,8 @@ RULE_DIR: /home/wuzhikun/github/PanSV/rule
 SRC_DIR: /home/wuzhikun/github/PanSV/src
 
 project_path: /home/wuzhikun/Project/PanSV
-THREADS: 20
-ThreadFold: 3
+THREADS: 10
+ThreadFold: 2
 Memory: "-Xmx30g"
 
 
