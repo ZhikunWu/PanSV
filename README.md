@@ -21,9 +21,15 @@
 
 
 ## datasets
+* [GIAB](https://www.nist.gov/programs-projects/genome-bottle)
+* [giab_data_indexes](https://github.com/genome-in-a-bottle/giab_data_indexes)
 * [Chinese-Pangenome-Consortium-Phase-I](https://github.com/Shuhua-Group/Chinese-Pangenome-Consortium-Phase-I)
 * [human-pangenomics](https://github.com/human-pangenomics)
 * [HPP_Year1_Data_Freeze_v1.0](https://github.com/human-pangenomics/HPP_Year1_Data_Freeze_v1.0): The Human Pangenome Reference Consortium produced sequencing data for assembly of 30 samples
 * [pantranscriptomes](http://cgl.gi.ucsc.edu/data/vgrna/pantranscriptomes/)
 * [The International Genome Sample Resource](https://www.internationalgenome.org/data-portal/sample)
+* [HGSVC3](https://www.internationalgenome.org/data-portal/data-collection/hgsvc3)
+* [HGSVC2](https://www.internationalgenome.org/data-portal/data-collection/hgsvc2)
+* [HGSVC2 assembly](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HGSVC2/release/v1.0/assemblies/)
+* [HGSVC3 dataset](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HGSVC3/working/)
 
