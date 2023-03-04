@@ -5,6 +5,8 @@
 
 ### [cactus](https://github.com/ComparativeGenomicsToolkit/cactus/blob/c6637f8904d84e7ef4bb09e5887c63b6fe63b158/doc/pangenome.md)
 
+### [Cactus manual](https://biocontainer-doc.readthedocs.io/en/latest/source/cactus/cactus.html)
+
 
 ### install cactus
 
@@ -23,6 +25,13 @@ python3 -m pip install -U setuptools pip==21.3.1
 python3 -m pip install -U -r /home/wuzhikun/software/cactus-bin-v2.4.0/toil-requirement.txt
 python3 -m pip install -U /home/wuzhikun/software/cactus-bin-v2.4.0
 ```
+
+```
+cd bin && for i in wigToBigWig faToTwoBit bedToBigBed bigBedToBed bedSort hgGcPercent; do wget -q http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/${i}; chmod ugo+x ${i}; done
+```
+
+
+
 
 ```
 $ source /home/wuzhikun/cactus_env/bin/activate
