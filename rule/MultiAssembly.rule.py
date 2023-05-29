@@ -81,7 +81,7 @@ rule ontAlign:
     log:
         IN_PATH + "/log/mm2_ont_{sample}.log"
     run:
-        shell("minimap2 --MD -a -x map-ont -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
+        shell("minimap2 --MD -a -x map-ont -secondary=no -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
 
 
 
@@ -115,7 +115,7 @@ rule ontAlign2:
     log:
         IN_PATH + "/log/ontAlign2_{sample}.log"
     run:
-        shell("minimap2 --MD -a -x map-ont -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
+        shell("minimap2 --MD -a -x map-ont -secondary=no  -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
 
 
 rule racon2:
@@ -146,7 +146,7 @@ rule ontAlign3:
     log:
         IN_PATH + "/log/ontAlign3_{sample}.log"
     run:
-        shell("minimap2 --MD -a -x map-ont -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
+        shell("minimap2 --MD -a -x map-ont -secondary=no  -t {threads} {input.contig} {input.fastq} > {output.sam} 2>{log}")
 
 
 
@@ -214,10 +214,10 @@ rule RagTag:
         # contig = rules.pilon.output.contig,
         contig = rules.racon3.output.contig,
     output:
-        scaffold = IN_PATH + "/Assembly/Scaffold/{sample}/ragtag.scaffold.fasta",
+        scaffold = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
     params:
         RefGenome = config["RefGenome"],
-        outDir = IN_PATH + "/Assembly/Scaffold/{sample}",
+        outDir = IN_PATH + "/Assembly/RagTag/{sample}",
     threads:
         THREADS
     log:
@@ -227,32 +227,6 @@ rule RagTag:
 ##############################################################
 
 
-
-################## BUSCO ############
-
-rule BUSCO:
-    input:
-        contig = rules.RagTag.output.scaffold,
-    output:
-        summary = IN_PATH + "/Evaluation/BUSCO/{sample}/run_embryophyta_odb10/short_summary.txt",
-    threads:
-        THREADS 
-    params:
-        buscoDB = "/home/wuzhikun/database/BUSCO/embryophyta_odb10",
-        outDir = IN_PATH + "/Evaluation/BUSCO",
-        species = "Vigna_unguiculata", 
-        evalue = 1e-05,
-        buscoConfig = config["buscoConfig"],
-    log:
-        IN_PATH + '/log/BUSCO_{sample}.log' 
-    run:
-        if not os.path.exists(params.outDir):
-            os.mkdir(params.outDir)
-        shell("cd {params.outDir} &&  busco --cpu {threads} -m genome -i {input.contig} --out {wildcards.sample} --out_path {params.outDir}  -l {params.buscoDB} --config {params.buscoConfig}  --force --offline > {log} 2>&1")
-
-
-
-#####################################
 
 
 

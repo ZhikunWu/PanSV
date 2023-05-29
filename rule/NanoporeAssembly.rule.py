@@ -45,8 +45,8 @@ def replace_config(in_file, out_file, seq_file, outDir):
 
 rule nextDenovoConfig:
     input:
-        fastq = IN_PATH + "/clean/{sample}.fastq.gz",
-        config = IN_PATH + "/home/wuzhikun/Project/PanVigna/config/NextDenovo.cfg",
+        fastq = rules.SeqFilt.output.fastq,
+        config = IN_PATH + "/config/NextDenovo.cfg",
     output:
         fofn = IN_PATH + "/Assembly/NextDenovo/fofn/{sample}_nextDenovo.fofn",
         config = IN_PATH + "/Assembly/NextDenovo/config/{sample}_nextDenovo.cfg",
@@ -69,7 +69,7 @@ rule nextDenovo:
         IN_PATH + "/log/nextDenovo_{sample}.log"
     run:
         # shell("source activate nanovar2 && nextDenovo {input.config} > {log} 2>&1")
-        cmd = "source activate nanovar2 && nextDenovo %s > %s 2>&1" % (input.config, log)
+        cmd = "source activate Assembly3 && nextDenovo %s > %s 2>&1" % (input.config, log)
         print(cmd)
         os.system(cmd)
 
@@ -124,7 +124,7 @@ rule mm2_ont:
 
 rule racon:
     input:
-        sam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_align1.sam"
+        sam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_align1.sam",
         contig = IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta",
         fastq = rules.SeqFilt.output.fastq,
     output:
@@ -157,7 +157,7 @@ rule mm2_ont2:
 rule racon2:
     input:
         sam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_align2.sam",
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon1.fasta",
         fastq = rules.SeqFilt.output.fastq,
     output:
         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon2.fasta",
@@ -207,71 +207,207 @@ rule racon3:
 
 
 
+########## pilon ##############
+# rule bwa:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+#         R1 = rules.DNAQC.output.R1,
+#         R2 = rules.DNAQC.output.R2,
+#     output:
+#         bam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs.bam"),
+#     params:
+#         sa = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta.sa",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/bwa_{sample}.log"
+#     run:
+#         if not os.path.exists(params.sa):
+#             cmd = "bwa index %s" % (input.contig)
+#             os.system(cmd)
+#         # shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+#         shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads}  -b - | samtools sort -m 5g -@ {threads} -o {output.bam} - > {log} 2>&1")
+#         shell("samtools index -@ {threads} {output.bam}")
+
+
+
+
+# rule pilon:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs.bam",
+#     output:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon1.fasta",
+#     threads:
+#         THREADS 
+#     params:
+#         pilon = config["pilon"],
+#         outdir = IN_PATH + "/Assembly/Polish/{sample}",
+#         memory = "-Xmx100G",
+#         mindepth = 20,
+#     log:
+#         IN_PATH + "/log/pilon_{sample}.log"
+#     run:
+#         shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}_ngs_pilon1 --threads {threads} --mindepth {params.mindepth} --changes --vcf --diploid  >{log} 2>&1")
+
+
+
+
+# rule bwa2:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon1.fasta",
+#         R1 = rules.DNAQC.output.R1,
+#         R2 = rules.DNAQC.output.R2,
+#     output:
+#         bam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs2.bam"),
+#     params:
+#         sa = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon1.fasta.sa",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/bwa2_{sample}.log"
+#     run:
+#         if not os.path.exists(params.sa):
+#             cmd = "bwa index %s" % (input.contig)
+#             os.system(cmd)
+#         # shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+#         shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads}  -b - | samtools sort -m 5g -@ {threads} -o {output.bam} - > {log} 2>&1")
+#         shell("samtools index -@ {threads} {output.bam}")
+
+
+
+
+# rule pilon2:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon1.fasta",
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs2.bam",
+#     output:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon2.fasta",
+#     threads:
+#         THREADS 
+#     params:
+#         pilon = config["pilon"],
+#         outdir = IN_PATH + "/Assembly/Polish/{sample}",
+#         memory = "-Xmx100G",
+#         mindepth = 20,
+#     log:
+#         IN_PATH + "/log/pilon2_{sample}.log"
+#     run:
+#         shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}_ngs_pilon2 --threads {threads} --mindepth {params.mindepth} --changes --vcf --diploid  >{log} 2>&1")
+
+
+
+
+
+# rule bwa3:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon2.fasta",
+#         R1 = rules.DNAQC.output.R1,
+#         R2 = rules.DNAQC.output.R2,
+#     output:
+#         bam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs3.bam"),
+#     params:
+#         sa = IIN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon2.fasta.sa",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/bwa3_{sample}.log"
+#     run:
+#         if not os.path.exists(params.sa):
+#             cmd = "bwa index %s" % (input.contig)
+#             os.system(cmd)
+#         # shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+#         shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads}  -b - | samtools sort -m 5g -@ {threads} -o {output.bam} - > {log} 2>&1")
+#         shell("samtools index -@ {threads} {output.bam}")
+
+
+
+
+# rule pilon3:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon2.fasta",
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs.bam",
+#     output:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_pilon3.fasta",
+#     threads:
+#         THREADS 
+#     params:
+#         pilon = config["pilon"],
+#         outdir = IN_PATH + "/Assembly/Polish/{sample}",
+#         memory = "-Xmx100G",
+#         mindepth = 20,
+#     log:
+#         IN_PATH + "/log/pilon3_{sample}.log"
+#     run:
+#         shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}_ngs_pilon3 --threads {threads} --mindepth {params.mindepth} --changes --vcf --diploid  >{log} 2>&1")
+###############################
+
+
 
 ###################### nextPolish #############
-rule ngsAlign1:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
-        # R1 = 
-        # R2 = 
-    output:
-        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam",
-    threads:
-        THREADS
-    run:
-        shell("samtools faidx {input.contig}")
-        shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -|samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
-        shell("samtools index -@ {threads} {output.bam}")
+# rule ngsAlign1:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+#         # R1 = 
+#         # R2 = 
+#     output:
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam",
+#     threads:
+#         THREADS
+#     run:
+#         shell("samtools faidx {input.contig}")
+#         shell("bwa index {input.contig}")
+#         shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -|samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
+#         shell("samtools index -@ {threads} {output.bam}")
 
 
 
-rule nextPolish1:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
-        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam",
-    output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
-    params:
-        nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
-    threads:
-        THREADS
-    run:
-        shell("python {params.nextpolish1} -g {input.contig} -t 1 -p {threads} -s {input.bam} > {output.contig}")
+# rule nextPolish1:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam",
+#     output:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
+#     params:
+#         nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
+#     threads:
+#         THREADS
+#     run:
+#         shell("python {params.nextpolish1} -g {input.contig} -t 1 -p {threads} -s {input.bam} > {output.contig}")
 
 
 
 
 
-rule ngsAlign2:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
-        # R1 = 
-        # R2 = 
-    output:
-        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam",
-    threads:
-        THREADS
-    run:
-        shell("samtools faidx {input.contig}")
-        shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -|samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
-        shell("samtools index -@ {threads} {output.bam}")
+# rule ngsAlign2:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
+#         # R1 = 
+#         # R2 = 
+#     output:
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam",
+#     threads:
+#         THREADS
+#     run:
+#         shell("samtools faidx {input.contig}")
+#         shell("bwa index {input.contig}")
+#         shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -|samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
+#         shell("samtools index -@ {threads} {output.bam}")
 
 
 
-rule nextPolish2:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
-        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam",
-    output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish1.fasta",
-    params:
-        nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
-    threads:
-        THREADS
-    run:
-        shell("python {params.nextpolish1} -g {input.contig} -t 2 -p {threads} -s {input.bam} > {output.contig}")
+# rule nextPolish2:
+#     input:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
+#         bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam",
+#     output:
+#         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish1.fasta",
+#     params:
+#         nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
+#     threads:
+#         THREADS
+#     run:
+#         shell("python {params.nextpolish1} -g {input.contig} -t 2 -p {threads} -s {input.bam} > {output.contig}")
 
 
 ###############################################
