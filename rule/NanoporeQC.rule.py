@@ -91,7 +91,7 @@ rule StatsMerge:
 
 #################### NGS ################
 
-rule DNAQC:
+rule fastp:
     input:
         R1 = IN_PATH + "/raw/{sample}_NGS.R1.fastq.gz",
         R2 = IN_PATH + "/raw/{sample}_NGS.R2.fastq.gz",

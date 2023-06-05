@@ -1,3 +1,4 @@
+"""
 ################################### ONT NextDenovo Assembly #############################
 
 rule ONTFasta:
@@ -72,7 +73,7 @@ rule nextPlot:
 # ####################################### racon polish using long read ###########################
 rule ontAlign:
     input:
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
         contig = rules.nextDenovo.output.assembly,
     output:
         sam = temp(IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT.sam"),
@@ -90,9 +91,9 @@ rule racon:
     input:
         sam = rules.ontAlign.output.sam,
         contig = rules.nextDenovo.output.assembly,
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -106,10 +107,10 @@ rule racon:
 
 rule ontAlign2:
     input:
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
         contig = rules.racon.output.contig,
     output:
-        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT2.sam"),
+        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT2.sam"),
     threads:
         THREADS * ThreadFold
     log:
@@ -122,9 +123,9 @@ rule racon2:
     input:
         sam = rules.ontAlign2.output.sam,
         contig = rules.racon.output.contig,
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon2.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon2.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -137,10 +138,10 @@ rule racon2:
 
 rule ontAlign3:
     input:
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
         contig = rules.racon2.output.contig,
     output:
-        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT3.sam"),
+        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT3.sam"),
     threads:
         THREADS * ThreadFold
     log:
@@ -154,9 +155,9 @@ rule racon3:
     input:
         sam = rules.ontAlign3.output.sam,
         contig = rules.racon2.output.contig,
-        fastq = rules.NanoFilt.output.fastq,
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon3.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -164,13 +165,13 @@ rule racon3:
     run:
         shell("racon --threads {threads} {input.fastq} {input.sam} {input.contig} > {output.contig} 2>{log}")
 #################################################
-
+"""
 
 
 ########## Pilon using short reads (three times)######
 rule NGSAlign:
     input:
-        contig = rules.racon3.output.contig,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
         R1 = rules.fastp.output.R1,
         R2 = rules.fastp.output.R2,
     output:
@@ -187,7 +188,7 @@ rule NGSAlign:
 
 rule pilon:
     input:
-        contig = rules.racon3.output.contig,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
         bam = rules.NGSAlign.output.bam,
     output:
         contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon.fasta",
@@ -204,26 +205,103 @@ rule pilon:
         shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
 
 
+
+
+
+rule NGSAlign2:
+    input:
+        contig = rules.pilon.output.contig,
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted2.bam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/NGSAlign2_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index -@ {threads} {output.bam}")
+
+
+rule pilon2:
+    input:
+        contig = rules.pilon.output.contig,
+        bam = rules.NGSAlign2.output.bam,
+    output:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon2.fasta",
+    threads:
+        THREADS
+    params:
+        pilon = config["pilon"],
+        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
+        memory = "-Xmx100G",
+        mindepth = 10,
+    log:
+        IN_PATH + "/log/pilon2_{sample}.log"
+    run:
+        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon2 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+
+
+
+
+
+rule NGSAlign3:
+    input:
+        contig = rules.pilon2.output.contig,
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted3.bam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/NGSAlign3_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index -@ {threads} {output.bam}")
+
+
+rule pilon3:
+    input:
+        contig = rules.pilon2.output.contig,
+        bam = rules.NGSAlign3.output.bam,
+    output:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon3.fasta",
+    threads:
+        THREADS
+    params:
+        pilon = config["pilon"],
+        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
+        memory = "-Xmx100G",
+        mindepth = 10,
+    log:
+        IN_PATH + "/log/pilon3_{sample}.log"
+    run:
+        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon3 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+
 #########################################
 
 
 
 ########################## Referenced scaffold #########################
-rule RagTag:
-    input:
-        # contig = rules.pilon.output.contig,
-        contig = rules.racon3.output.contig,
-    output:
-        scaffold = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
-    params:
-        RefGenome = config["RefGenome"],
-        outDir = IN_PATH + "/Assembly/RagTag/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/RagTag_{sample}.log",
-    run:
-        shell("ragtag.py scaffold {params.RefGenome} {input.contig}  -o {params.outDir}  -w -u -t {threads} --aligner minimap2 > {log} 2>&1")
+# rule RagTag:
+#     input:
+#         # contig = rules.pilon.output.contig,
+#         contig = rules.racon3.output.contig,
+#     output:
+#         scaffold = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+#     params:
+#         RefGenome = config["RefGenome"],
+#         outDir = IN_PATH + "/Assembly/RagTag/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/RagTag_{sample}.log",
+#     run:
+#         shell("ragtag.py scaffold {params.RefGenome} {input.contig}  -o {params.outDir}  -w -u -t {threads} --aligner minimap2 > {log} 2>&1")
 ##############################################################
 
 
