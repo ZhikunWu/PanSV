@@ -411,3 +411,122 @@ rule racon3:
 
 
 ###############################################
+
+
+
+
+########## Pilon using short reads (three times)######
+rule NGSAlign:
+    input:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted.bam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/NGSAlign_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index -@ {threads} {output.bam}")
+
+
+rule pilon:
+    input:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        bam = rules.NGSAlign.output.bam,
+    output:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon.fasta",
+    threads:
+        THREADS
+    params:
+        pilon = config["pilon"],
+        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
+        memory = "-Xmx100G",
+        mindepth = 10,
+    log:
+        IN_PATH + "/log/pilon_{sample}.log"
+    run:
+        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+
+
+
+
+
+rule NGSAlign2:
+    input:
+        contig = rules.pilon.output.contig,
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted2.bam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/NGSAlign2_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index -@ {threads} {output.bam}")
+
+
+rule pilon2:
+    input:
+        contig = rules.pilon.output.contig,
+        bam = rules.NGSAlign2.output.bam,
+    output:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon2.fasta",
+    threads:
+        THREADS
+    params:
+        pilon = config["pilon"],
+        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
+        memory = "-Xmx100G",
+        mindepth = 10,
+    log:
+        IN_PATH + "/log/pilon2_{sample}.log"
+    run:
+        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon2 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+
+
+
+
+
+rule NGSAlign3:
+    input:
+        contig = rules.pilon2.output.contig,
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted3.bam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/NGSAlign3_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index -@ {threads} {output.bam}")
+
+
+rule pilon3:
+    input:
+        contig = rules.pilon2.output.contig,
+        bam = rules.NGSAlign3.output.bam,
+    output:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon3.fasta",
+    threads:
+        THREADS
+    params:
+        pilon = config["pilon"],
+        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
+        memory = "-Xmx100G",
+        mindepth = 10,
+    log:
+        IN_PATH + "/log/pilon3_{sample}.log"
+    run:
+        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon3 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+
+#########################################

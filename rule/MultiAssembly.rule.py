@@ -168,125 +168,135 @@ rule racon3:
 """
 
 
-########## Pilon using short reads (three times)######
-rule NGSAlign:
+#################### PolyPolish ################
+rule bwaAlign:
     input:
         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
         R1 = rules.fastp.output.R1,
         R2 = rules.fastp.output.R2,
     output:
-        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted.bam"),
+        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R1.sam"), 
+        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R2.sam"), 
     threads:
         THREADS
     log:
-        IN_PATH + "/log/NGSAlign_{sample}.log"
+        IN_PATH + "/log/bwaAlign_{sample}.log"
     run:
         shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
-        shell("samtools index -@ {threads} {output.bam}")
+        shell("bwa mem -t {threads} -a {input.contig} {input.R1} > {output.sam1} 2>{log}")
+        shell("bwa mem -t {threads} -a {input.contig} {input.R2} > {output.sam2} 2>>{log}")
 
 
-rule pilon:
+rule InsertFilter:
+    input:
+        sam1 = rules.bwaAlign.output.sam1,
+        sam2 = rules.bwaAlign.output.sam2,
+    output:
+        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R1.sam"),
+        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R2.sam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/InsertFilter_{sample}.log"
+    run:
+        shell("polypolish_insert_filter.py --in1 {input.sam1} --in2 {input.sam2} --out1 {output.sam1} --out2 {output.sam2} > {log} 2>&1")
+
+
+
+rule polypolish:
     input:
         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
-        bam = rules.NGSAlign.output.bam,
+        sam1 = rules.InsertFilter.output.sam1,
+        sam2 = rules.InsertFilter.output.sam2,
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon.fasta",
+        contig = IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_polypolish1.fasta",
     threads:
         THREADS
-    params:
-        pilon = config["pilon"],
-        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
-        memory = "-Xmx100G",
-        mindepth = 10,
     log:
-        IN_PATH + "/log/pilon_{sample}.log"
+        IN_PATH + "/log/polypolish_{sample}.log"
     run:
-        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+        shell("polypolish {input.contig} {input.sam1} {input.sam2} > {output.contig} >{log} 2>&1")
+###############################################
 
 
 
 
 
-rule NGSAlign2:
+
+
+
+
+
+##################### nextPolish #############
+rule ngsAlign1:
     input:
-        contig = rules.pilon.output.contig,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
         R1 = rules.fastp.output.R1,
         R2 = rules.fastp.output.R2,
     output:
-        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted2.bam"),
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam"),
     threads:
         THREADS
-    log:
-        IN_PATH + "/log/NGSAlign2_{sample}.log"
     run:
+        shell("samtools faidx {input.contig}")
         shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -| samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
         shell("samtools index -@ {threads} {output.bam}")
 
 
-rule pilon2:
+
+rule nextPolish1:
     input:
-        contig = rules.pilon.output.contig,
-        bam = rules.NGSAlign2.output.bam,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort1.bam",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon2.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
+    params:
+        nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
     threads:
         THREADS
-    params:
-        pilon = config["pilon"],
-        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
-        memory = "-Xmx100G",
-        mindepth = 10,
-    log:
-        IN_PATH + "/log/pilon2_{sample}.log"
     run:
-        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon2 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
+        shell("python {params.nextpolish1} -g {input.contig} -t 1 -p {threads} -s {input.bam} > {output.contig}")
 
 
 
 
 
-rule NGSAlign3:
+rule ngsAlign2:
     input:
-        contig = rules.pilon2.output.contig,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
         R1 = rules.fastp.output.R1,
         R2 = rules.fastp.output.R2,
     output:
-        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}_SRS_sorted3.bam"),
+        bam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam"),
     threads:
         THREADS
-    log:
-        IN_PATH + "/log/NGSAlign3_{sample}.log"
     run:
+        shell("samtools faidx {input.contig}")
         shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view -@ {threads} -F 0x4 -b - | samtools sort - -m 5g -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("bwa mem -t {threads} {input.contig} {input.R1} {input.R2} | samtools view --threads {threads} -F 0x4 -b - | samtools fixmate -m --threads {threads}  - -|samtools sort -m 2g --threads {threads} -|samtools markdup --threads {threads} -r - {output.bam}")
         shell("samtools index -@ {threads} {output.bam}")
 
 
-rule pilon3:
+
+rule nextPolish2:
     input:
-        contig = rules.pilon2.output.contig,
-        bam = rules.NGSAlign3.output.bam,
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish_temp.fasta",
+        bam = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_sort2.bam",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon3.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish1.fasta",
+    params:
+        nextpolish1 = "/home/wuzhikun/software/NextPolish/lib/nextpolish1.py",
     threads:
         THREADS
-    params:
-        pilon = config["pilon"],
-        outdir = IN_PATH + "/Assembly/Polish/{sample}/Pilon",
-        memory = "-Xmx100G",
-        mindepth = 10,
-    log:
-        IN_PATH + "/log/pilon3_{sample}.log"
     run:
-        shell("java  {params.memory}  -jar {params.pilon}  --genome {input.contig}  --bam {input.bam}  --outdir {params.outdir} --output {wildcards.sample}.SRS_pilon3 --threads {threads} --mindepth {params.mindepth} >{log} 2>&1")
-
-#########################################
+        shell("python {params.nextpolish1} -g {input.contig} -t 2 -p {threads} -s {input.bam} > {output.contig}")
 
 
+##############################################
 
-########################## Referenced scaffold #########################
+
+# ######################### Referenced scaffold #########################
 # rule RagTag:
 #     input:
 #         # contig = rules.pilon.output.contig,
@@ -302,7 +312,7 @@ rule pilon3:
 #         IN_PATH + "/log/RagTag_{sample}.log",
 #     run:
 #         shell("ragtag.py scaffold {params.RefGenome} {input.contig}  -o {params.outDir}  -w -u -t {threads} --aligner minimap2 > {log} 2>&1")
-##############################################################
+# #############################################################
 
 
 
