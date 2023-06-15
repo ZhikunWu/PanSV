@@ -161,3 +161,44 @@ Gaps = 101
 ```
 
 
+
+
+
+
+
+### run
+```
+(Assembly3) wuzhikun@cu18 09:21:44 ^_^ /home/wuzhikun/Project/PanVigna/pipeline/RagTag 
+$ ragtag.py scaffold /home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta  /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta  -o /home/wuzhikun/Project/PanVigna/pipeline/RagTag  -w -u -t 20 --aligner minimap2
+
+Fri Jun  9 09:21:55 2023 --- VERSION: RagTag v2.0.1
+Fri Jun  9 09:21:55 2023 --- CMD: ragtag.py scaffold /home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta -o /home/wuzhikun/Project/PanVigna/pipeline/RagTag -w -u -t 20 --aligner minimap2
+Fri Jun  9 09:21:55 2023 --- INFO: Mapping the query genome to the reference genome
+Fri Jun  9 09:21:55 2023 --- INFO: Running: minimap2 -x asm5 -t 20 /home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.asm.paf 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.asm.paf.log
+Fri Jun  9 09:23:06 2023 --- INFO: Finished running : minimap2 -x asm5 -t 20 /home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.asm.paf 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.asm.paf.log
+Fri Jun  9 09:23:06 2023 --- INFO: Reading whole genome alignments
+Fri Jun  9 09:23:06 2023 --- INFO: Filtering and merging alignments
+Fri Jun  9 09:23:06 2023 --- INFO: Ordering and orienting query sequences
+Fri Jun  9 09:23:06 2023 --- INFO: Writing scaffolds
+Fri Jun  9 09:23:06 2023 --- INFO: Writing: /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.agp
+Fri Jun  9 09:23:08 2023 --- INFO: Running: ragtag_agp2fa.py /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.agp /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.fasta 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.err
+Fri Jun  9 09:23:15 2023 --- INFO: Finished running : ragtag_agp2fa.py /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.agp /home/wuzhikun/Project/PanVigna/Assembly/Polish/CPG08/CPG08_ngs_nextPolish3.fasta > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.fasta 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.err
+Fri Jun  9 09:23:15 2023 --- INFO: Running: ragtag_stats.py /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.agp /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.confidence.txt > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.stats 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.err
+Fri Jun  9 09:23:15 2023 --- INFO: Finished running : ragtag_stats.py /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.agp /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.confidence.txt > /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.stats 2> /home/wuzhikun/Project/PanVigna/pipeline/RagTag/ragtag.scaffold.err
+Fri Jun  9 09:23:15 2023 --- INFO: Goodbye
+
+```
+
+output files:
+```
+-rw-rw-r-- 1  11K Jun  9 09:19 ragtag.scaffold.agp
+-rw-rw-r-- 1 571K Jun  9 09:19 ragtag.scaffold.asm.paf
+-rw-rw-r-- 1  791 Jun  9 09:19 ragtag.scaffold.asm.paf.log
+-rw-rw-r-- 1 3.6K Jun  9 09:19 ragtag.scaffold.confidence.txt
+-rw-rw-r-- 1    0 Jun  9 09:18 ragtag.scaffold.err
+-rw-rw-r-- 1 478M Jun  9 09:19 ragtag.scaffold.fasta
+-rw-rw-r-- 1  111 Jun  9 09:19 ragtag.scaffold.stats
+
+```
+
+

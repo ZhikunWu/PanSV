@@ -1,3 +1,44 @@
+############# length evaluation #######
+# rule contigLen:
+#     input:
+#         assembly = IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta",
+#     output:
+#         fai = IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta.fai",
+#         length = IN_PATH + "/Evaluation/Length/NextDenovo/{sample}.contigs.txt",
+#     params:
+#         ScaffoldRank = ScriptDir + "/ScaffoldRank.py",
+#     run:
+#         shell("samtools faidx {input.assembly}")
+#         shell("python {params.ScaffoldRank} --fai {output.fai} --out {output.length}")
+    
+# rule AllLength:
+#     input:
+#         length = expand(IN_PATH + "/Evaluation/Length/NextDenovo/{sample}.contigs.txt", sample=SAMPLES),
+#     output:
+#         length = IN_PATH + "/Evaluation/Length/NextDenovo/All_samples.contigs.txt",
+#     run:
+#         Files = sorted(input.length)
+#         for i in range(len(Files)):
+#             f = Files[i]
+#             if i == 0:
+#                 cmd = """ awk '{print "%s""\t"$2"\t"$3}' %s  > %s""" % (wildcards.sample, f, output.length)
+#             else:
+#                 cmd = """ awk '{print "%s""\t"$2"\t"$3}' %s  >> %s""" % (wildcards.sample, f, output.length)
+#             os.system(cmd)
+
+# rule AllLengthPlot:
+#     input:
+#         length = IN_PATH + "/Evaluation/Length/NextDenovo/All_samples.contigs.txt",
+#     output:
+#         pdf = IN_PATH + "/Evaluation/Length/NextDenovo/All_samples.contigs.pdf",d
+#     params:
+#         ScaffoldRankR = ScriptDir + "/ScaffoldRank.R",
+#     run:
+#         shell("Rscript {params.ScaffoldRankR} --input {input.length} --pdf {output.pdf} --width 5 --height 5")
+
+######################################
+
+
 ########### quality value #######
 rule merylCount1:
     input:
@@ -51,7 +92,7 @@ rule RawQV:
         merge = IN_PATH + "/QualityValue/kmer/{sample}/{sample}_merge",
         assembly = IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta",
     output:
-        qv = IN_PATH + "/QualityValue/NextDenovo/{sample}.qv",
+        qv = IN_PATH + "/QualityValue/NextDenovo/{sample}/{sample}.qv",
     params:
         qv = IN_PATH + "/QualityValue/NextDenovo/{sample}",
     threads:
@@ -59,7 +100,9 @@ rule RawQV:
     log:
         IN_PATH + "/log/RawQV_{sample}.log",
     run:
-        shell("merqury.sh {input.merge}  {input.assembly}  {params.qv} > {log} 2>&1")
+        if not os.path.exists(params.qv):
+            os.makedirs(params.qv)
+        shell("cd {params.qv} && merqury.sh {input.merge}  {input.assembly}  {wildcards.sample} > {log} 2>&1")
 
 
 rule ONTQV:
@@ -83,9 +126,9 @@ rule ONTQV:
 rule NGSQV:
     input:
         merge = IN_PATH + "/QualityValue/kmer/{sample}/{sample}_merge",
-        assembly = IN_PATH + "/Assembly/Polish/{sample}/Pilon/{sample}.SRS_pilon.fasta",
+        assembly = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish3.fasta",
     output:
-        qv = IN_PATH + "/QualityValue/NGSPolish/{sample}.qv",
+        qv = IN_PATH + "/QualityValue/NGSPolish/{sample}/{sample}.qv",
     params:
         qv = IN_PATH + "/QualityValue/NGSPolish/{sample}",
     threads:
@@ -93,8 +136,10 @@ rule NGSQV:
     log:
         IN_PATH + "/log/NGSQV_{sample}.log",
     run:
-        shell("merqury.sh {input.merge}  {input.assembly}  {params.qv} > {log} 2>&1")
-################################
+        if not os.path.exists(params.qv):
+            os.makedirs(params.qv)
+        shell("cd {params.qv} && merqury.sh {input.merge}  {input.assembly}  {wildcards.sample} > {log} 2>&1")
+########################################
 
 
 
@@ -105,14 +150,14 @@ rule NGSQV:
 
 rule BUSCO:
     input:
-        assembly = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        assembly = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish3.fasta",
     output:
-        summary = IN_PATH + "/Evaluation/BUSCO/racon3/{sample}/run_embryophyta_odb10/short_summary.txt",
+        summary = IN_PATH + "/Evaluation/BUSCO/ngsPolish/{sample}/run_embryophyta_odb10/short_summary.txt",
     threads:
         THREADS 
     params:
         buscoDB = "/home/wuzhikun/database/BUSCO/version5/embryophyta_odb10",
-        outDir = IN_PATH + "/Evaluation/BUSCO/racon3",
+        outDir = IN_PATH + "/Evaluation/BUSCO/ngsPolish",
         # species = "Vigna_unguiculata", 
         # evalue = 1e-05,
         buscoConfig = "/home/wuzhikun/Project/PanVigna/config/busco.config",
@@ -125,7 +170,7 @@ rule BUSCO:
         print(cmd)
         os.system(cmd)
 
-#####################################
+#########################################
 
 
 
