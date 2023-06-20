@@ -207,6 +207,58 @@ rule racon3:
 
 
 
+#################### PolyPolish ################
+rule bwaAlign:
+    input:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        R1 = rules.fastp.output.R1,
+        R2 = rules.fastp.output.R2,
+    output:
+        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R1.sam"), 
+        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R2.sam"), 
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/bwaAlign_{sample}.log"
+    run:
+        shell("bwa index {input.contig}")
+        shell("bwa mem -t {threads} -a {input.contig} {input.R1} > {output.sam1} 2>{log}")
+        shell("bwa mem -t {threads} -a {input.contig} {input.R2} > {output.sam2} 2>>{log}")
+
+
+rule InsertFilter:
+    input:
+        sam1 = rules.bwaAlign.output.sam1,
+        sam2 = rules.bwaAlign.output.sam2,
+    output:
+        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R1.sam"),
+        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R2.sam"),
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/InsertFilter_{sample}.log"
+    run:
+        shell("polypolish_insert_filter.py --in1 {input.sam1} --in2 {input.sam2} --out1 {output.sam1} --out2 {output.sam2} > {log} 2>&1")
+
+
+
+rule polypolish:
+    input:
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
+        sam1 = rules.InsertFilter.output.sam1,
+        sam2 = rules.InsertFilter.output.sam2,
+    output:
+        contig = IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_polypolish1.fasta",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/polypolish_{sample}.log"
+    run:
+        shell("polypolish {input.contig} {input.sam1} {input.sam2} > {output.contig} >{log} 2>&1")
+###############################################
+
+
+
 ########## pilon ##############
 # rule bwa:
 #     input:

@@ -39,6 +39,39 @@
 ######################################
 
 
+
+###################### Coverage #########################
+
+rule ONTCov:
+    input:
+        bam = IN_PATH + "/Assembly/RagTagAlign/{sample}_ONTAlign.bam",
+    output:
+        bw = IN_PATH + "/Evaluation/Coverage/{sample}/{sample}_ONT_WGS.bw",
+    log:
+        IN_PATH + "/log/ONTCov_{sample}.log"
+    run:
+        shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+
+
+rule ONTDepth:
+    input:
+        bam = IN_PATH + "/Assembly/RagTagAlign/{sample}_ONTAlign.bam",
+    output:
+        depth = IN_PATH +  "/Evaluation/Coverage/{sample}/{sample}_ONT.per-base.bed.gz",
+    threads:
+        THREADS
+    params:
+        outPrefix = IN_PATH + '/Evaluation/Coverage/{sample}/{sample}_ONT',
+    log:
+        IN_PATH + "/log/ONTDepth_{sample}.log"
+    run:
+        # shell('mosdepth --threads {threads} --fast-mode --flag 256  {params.outPrefix} {input.bam} > {log} 2>&1')
+        cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
+        print(cmd)
+        os.system(cmd)
+##################################################################
+
+
 ########### quality value #######
 rule merylCount1:
     input:
@@ -139,7 +172,115 @@ rule NGSQV:
         if not os.path.exists(params.qv):
             os.makedirs(params.qv)
         shell("cd {params.qv} && merqury.sh {input.merge}  {input.assembly}  {wildcards.sample} > {log} 2>&1")
+
+
+
+rule MergeQV:
+    input:
+        nextDenovo = expand(IN_PATH + "/QualityValue/NextDenovo/{sample}/{sample}.qv", sample=SAMPLES),
+        ONT = expand(IN_PATH + "/QualityValue/ONTPolish/{sample}/{sample}.qv", sample=SAMPLES),
+        NGS = expand(IN_PATH + "/QualityValue/NGSPolish/{sample}/{sample}.qv", sample=SAMPLES),
+    output:
+        nextDenovo = IN_PATH + "/QualityValue/NextDenovo_samples.qv.xls",
+        ONT = IN_PATH + "/QualityValue/ONTPolish_samples.qv.xls",
+        NGS = IN_PATH + "/QualityValue/NGSPolish_samples.qv.xls",
+    run:
+        NextDenovos = ",".join(sorted(input.nextDenovo))
+        ONTS = ",".join(sorted(input.ONT))
+        NGSS = ",".join(sorted(input.NGS))
+        merge_qv(NextDenovos, output.nextDenovo)
+        merge_qv(ONTS, output.ONT)
+        merge_qv(NGSS, output.NGS)
+
+
+def merge_qv(in_file, out_file):
+    out_h = open(out_file, "w")
+    files = in_file.split(",")
+    for i in files:
+        n = i.split("/")[-2]
+        in_h = open(i, "r")
+        line = in_h.readline().strip()
+        out_h.write("%s\t%s\n" % (n, line))
+        in_h.close()
+    out_h.close()
+
 ########################################
+
+
+################## centromeres ##########
+rule SatSeqAlign:
+    input:
+        fa =  "/home/wuzhikun/Project/Vigna/BACKUP_230424/Vigna_SRF/Vigna_satellite.fa",
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+    output:
+        paf = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.paf",
+    threads:
+        THREADS
+    params:
+        srfutils = "/home/wuzhikun/software/srf/srfutils.js",
+    log:
+        IN_PATH + "/log/SatSeqAlign_{sample}.log"
+    run:
+        shell("minimap2 -c -t {threads}  -N1000000 -f1000 -r100,100 <({params.srfutils} enlong {input.fa}) {input.assembly} > {output.paf}")
+
+
+rule paf2bed:
+    input:
+        paf =  IN_PATH + "/Centromere/SRF/{sample}_srf_aln.paf",
+    output:
+        bed = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.bed",
+        abun = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.len",
+    params:
+        srfutils = "/home/wuzhikun/software/srf/srfutils.js",
+    threads:
+        THREADS
+    run:
+        shell("{params.srfutils} paf2bed {input.paf} > {output.bed}")
+        shell("{params.srfutils} bed2abun {output.bed} > {output.abun}")
+
+
+
+rule satellite:
+    input:
+        bed = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.bed",
+    output:
+        satellite = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.satellite.txt",
+    threads:
+        THREADS
+    params:
+        CenRegionRepeat = SCRIPT_DIR + "/CenRegionRepeat.py",
+    run:
+        shell("python {params.CenRegionRepeat} --record {input.bed} --satellite {output.satellite}")
+
+
+
+rule cluster:
+    input:
+        bed = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.bed",
+    output:
+        bed = temp(IN_PATH + "/Centromere/SRF/{sample}_srf_aln_temp.bed"),
+        cluster = IN_PATH + "/Centromere/SRF/{sample}_srf_aln_cluster.bed",
+    threads:
+        THREADS
+    run:
+        shell("cut -f 1-3 {input.bed} > {output.bed}")
+        shell("bedtools cluster -i {output.bed} -d 100000 > {output.cluster}")
+
+
+rule targetRegion:
+    input:
+        cluster = IN_PATH + "/Centromere/SRF/{sample}_srf_aln_cluster.bed",
+    output:
+        target = IN_PATH + "/Centromere/SRF/{sample}_srf_aln_cluster_target.txt",
+    params:
+        ClusterLongest = SCRIPT_DIR + "/ClusterLongest.py",
+    threads:
+        THREADS
+    run:
+        shell("python {params.ClusterLongest} --cluster {input.cluster} --out {output.target}")
+
+
+#########################################
 
 
 
@@ -150,14 +291,14 @@ rule NGSQV:
 
 rule BUSCO:
     input:
-        assembly = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish3.fasta",
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
     output:
-        summary = IN_PATH + "/Evaluation/BUSCO/ngsPolish/{sample}/run_embryophyta_odb10/short_summary.txt",
+        summary = IN_PATH + "/Evaluation/BUSCO/ragtag/{sample}/run_embryophyta_odb10/short_summary.txt",
     threads:
         THREADS 
     params:
         buscoDB = "/home/wuzhikun/database/BUSCO/version5/embryophyta_odb10",
-        outDir = IN_PATH + "/Evaluation/BUSCO/ngsPolish",
+        outDir = IN_PATH + "/Evaluation/BUSCO/ragtag",
         # species = "Vigna_unguiculata", 
         # evalue = 1e-05,
         buscoConfig = "/home/wuzhikun/Project/PanVigna/config/busco.config",
@@ -170,7 +311,25 @@ rule BUSCO:
         print(cmd)
         os.system(cmd)
 
+
+rule buscoSummary:
+    input:
+        stats = expand(IN_PATH + "/Evaluation/BUSCO/ragtag/{sample}/run_embryophyta_odb10/short_summary.txt", sample=SAMPLES),
+    output:
+        summary = IN_PATH + "/Evaluation/BUSCO/ragtag/All_busco_summary.xls",
+    params:
+        buscoSummary = SCRIPT_DIR + "/buscoSummary.py"
+    run:
+        Files = ",".join(input.stats)
+        shell("python {params.buscoSummary} --file {Files} --out {output.summary}")
+
+
+
 #########################################
+
+
+
+
 
 
 

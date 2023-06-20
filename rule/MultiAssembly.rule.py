@@ -1,36 +1,6 @@
 
 ################################### ONT NextDenovo Assembly #############################
 
-# rule ONTFasta:
-#     input:
-#         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
-#     output:
-#         fastq = IN_PATH + "/clean/{sample}_ONT.fastq",
-#         # fasta = IN_PATH + "/clean/{sample}_ONT.fasta",
-#     threads:
-#         THREADS
-#     run:
-#         shell("pigz -p {threads} -dc {input.fastq} > {output.fastq}")
-#         # shell("seqtk seq -a {input.fastq} > {output.fasta}")
-
-
-
-# rule nextDenovo:
-#     input:
-#         fastq = rules.ONTFasta.output.fastq,
-#     output:
-#         fofn = IN_PATH + "/Assembly/NextDenovo/{sample}/{sample}_WGS_LRS.fofn",
-#         assembly = IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta",
-#     threads:
-#         THREADS * ThreadFold
-#     params:
-#         configfile = IN_PATH + "/config/NextDenovo_{sample}.config",
-#     log:
-#         IN_PATH + "/log/nextDenovo_{sample}.log"
-#     run:
-#         shell("realpath {input.fastq} > {output.fofn}")
-#         shell("nextDenovo {params.configfile} > {log} 2>&1")
-
 def replace_config(in_file, out_file, seq_file, outDir):
     in_h = open(in_file, "r")
     out_h = open(out_file, "w")
@@ -76,6 +46,21 @@ rule nextDenovo:
         print(cmd)
         os.system(cmd)
 
+
+rule AssemblySummary:
+    input:
+        stats = expand(IN_PATH + "/Assembly/NextDenovo/{sample}/03.ctg_graph/nd.asm.fasta.stat", sample=SAMPLES),
+    output:
+        stats = IN_PATH + "/Assembly/NextDenovo/All_assembly_stats.xls",
+    params:
+        AssemblySummary = SCRIPT_DIR + "/AssemblySummary.py"
+    run:
+        Files = ",".join(input.stats)
+        shell("python {params.AssemblySummary} --file {Files} --out {output.stats}")
+
+
+
+
 """
 rule nextStats:
     ### https://github.com/raymondkiu/sequence-stats
@@ -120,7 +105,7 @@ rule ontAlign:
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
         contig = rules.nextDenovo.output.assembly,
     output:
-        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT.sam"),
+        sam = temp(IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT.sam"),
     threads:
         THREADS * ThreadFold
     log:
@@ -137,7 +122,7 @@ rule racon:
         contig = rules.nextDenovo.output.assembly,
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -169,7 +154,7 @@ rule racon2:
         contig = rules.racon.output.contig,
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon2.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon2.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -201,7 +186,7 @@ rule racon3:
         contig = rules.racon2.output.contig,
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
     output:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_polish_racon3.fasta",
+        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
     threads:
         THREADS * ThreadFold
     log:
@@ -210,63 +195,6 @@ rule racon3:
         shell("racon --threads {threads} {input.fastq} {input.sam} {input.contig} > {output.contig} 2>{log}")
 #################################################
 """
-
-
-#################### PolyPolish ################
-rule bwaAlign:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
-        R1 = rules.fastp.output.R1,
-        R2 = rules.fastp.output.R2,
-    output:
-        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R1.sam"), 
-        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_aln1.R2.sam"), 
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/bwaAlign_{sample}.log"
-    run:
-        shell("bwa index {input.contig}")
-        shell("bwa mem -t {threads} -a {input.contig} {input.R1} > {output.sam1} 2>{log}")
-        shell("bwa mem -t {threads} -a {input.contig} {input.R2} > {output.sam2} 2>>{log}")
-
-
-rule InsertFilter:
-    input:
-        sam1 = rules.bwaAlign.output.sam1,
-        sam2 = rules.bwaAlign.output.sam2,
-    output:
-        sam1 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R1.sam"),
-        sam2 = temp(IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_filtered1.R2.sam"),
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/InsertFilter_{sample}.log"
-    run:
-        shell("polypolish_insert_filter.py --in1 {input.sam1} --in2 {input.sam2} --out1 {output.sam1} --out2 {output.sam2} > {log} 2>&1")
-
-
-
-rule polypolish:
-    input:
-        contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon3.fasta",
-        sam1 = rules.InsertFilter.output.sam1,
-        sam2 = rules.InsertFilter.output.sam2,
-    output:
-        contig = IN_PATH + "/Assembly/Polypolish/{sample}/{sample}_polypolish1.fasta",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/polypolish_{sample}.log"
-    run:
-        shell("polypolish {input.contig} {input.sam1} {input.sam2} > {output.contig} >{log} 2>&1")
-###############################################
-
-
-
-
-
-
 
 
 
@@ -479,12 +407,17 @@ rule nextPolish6:
 ##############################################
 
 
+
+
+
+
 # ######################### Referenced scaffold #########################
 rule RagTag:
     input:
         contig = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ngs_nextPolish3.fasta",
     output:
         scaffold = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+        stats = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.stats",
     params:
         RefGenome = config["RefGenome"],
         outDir = IN_PATH + "/Assembly/RagTag/{sample}",
@@ -496,6 +429,74 @@ rule RagTag:
         shell("ragtag.py scaffold {params.RefGenome} {input.contig}  -o {params.outDir}  -w -u -t {threads} --aligner minimap2 > {log} 2>&1")
 
 
+
+def Merge_RagTag(in_file, out_file):
+    out_h = open(out_file, "w")
+    out_h.write("Sample\tplaced_sequences\tplaced_bp\tunplaced_sequences\tunplaced_bp\tgap_bp\tgap_sequences\n")
+    files = in_file.split(",")
+    for i in files:
+        n = i.split("/")[-2]
+        in_h = open(i, "r")
+        header = in_h.readline().strip()
+        line = in_h.readline().strip()
+        out_h.write("%s\t%s\n" % (n, line))
+        in_h.close()
+    out_h.close()
+
+
+
+rule MergeRagTag:
+    input:
+        stats = expand(IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.stats", sample=SAMPLES),
+    output:
+        stats = IN_PATH + "/Assembly/RagTag/All_ragtag.scaffold.stats.xls",
+    run:
+        Files = ",".join(sorted(input.stats))
+        Merge_RagTag(Files, output.stats)
+
+
+
+rule RagTagGaps:
+    input:
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+    output:
+        gap = IN_PATH + "/Assembly/RagTagGaps/{sample}_scaffold_gap.txt",
+    params:
+        AssemblyGap = SCRIPT_DIR + "/AssemblyGap.py"
+    threads:
+        THREADS
+    run:
+        shell("python {params.AssemblyGap} --genome {input.assembly} --out {output.gap}")
+
+
+
+rule RagTag2Ref:
+    input:
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+    output:
+        mashmap = IN_PATH + "/Assembly/RagTagMashmap/{sample}/mashmap.out.txt",
+    params:
+        RefGenome = config["RefGenome"],
+        mashmap = "/home/wuzhikun/software/mashmap-Linux64-v2.0/mashmap",
+        generateDotPlot = "/home/wuzhikun/software/mashmap-Linux64-v2.0/MashMap/scripts/generateDotPlot",
+        outPrefix = IN_PATH + "/Assembly/RagTagMashmap/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/RagTag2Ref_{sample}.log"
+    run:
+        shell("{params.mashmap} -r {params.RefGenome} -q {input.assembly} --perc_identity 95 --threads {threads} --segLength 50000 --filter_mode one-to-one --output {output.mashmap} > {log} 2>&1")
+        shell("cd {params.outPrefix} && {params.generateDotPlot} png  large  {output.mashmap}")
+
+
+############################################################
+
+
+
+
+
+
+##################### RagTag SV ####################
 rule ont2scaffold:
     input:
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
@@ -565,27 +566,41 @@ rule NanoSV:
         os.system(cmd)
 
 
-rule nanovar:
+# rule nanovar:
+#     input:
+#         bam = IN_PATH + "/Assembly/RagTagAlign/{sample}_ONTAlign.bam",
+#         assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+#     output:
+#         total = IN_PATH + "/Assembly/RagTagAlign/{sample}/{sample}_ONT.nanovar.total.vcf",
+#         vcf = IN_PATH + "/Assembly/RagTagAlign/{sample}/{sample}_ONT.nanovar.pass.vcf",
+#     threads:
+#         THREADS
+#     params:
+#         outdir = IN_PATH + "/SVCall/nanovar/{sample}",
+#     log:
+#         IN_PATH + "/log/nanovar_{sample}.log"
+#     run:
+#         ### nanovar: /home/litong/anaconda3/envs/nanovar/bin/nanovar
+#         ### --data_type ont, pacbio-clr, pacbio-ccs
+#         # shell("nanovar -r {params.RefGenome} -l {input.fastq} -t {threads} -o {params.outdir} >{log} 2>&1")
+#         # cmd = "source activate NanoVar && nanovar -t %s --data_type ont --mincov 2 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, params.RefGenome, params.outdir, log)
+#         cmd = "source activate nanovar && nanovar -t %s --data_type ont --mincov 3 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, input.assembly, params.outdir, log)
+#         print(cmd)
+#         os.system(cmd)
+
+rule homoSV:
     input:
-        bam = IN_PATH + "/Assembly/RagTagAlign/{sample}_ONTAlign.bam",
-        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+        vcf = IN_PATH + "/Assembly/RagTagAlign/{sample}.sniffles.vcf",
     output:
-        total = IN_PATH + "/Assembly/RagTagAlign/{sample}/{sample}_ONT.nanovar.total.vcf",
-        vcf = IN_PATH + "/Assembly/RagTagAlign/{sample}/{sample}_ONT.nanovar.pass.vcf",
-    threads:
-        THREADS
+        homo = IN_PATH + "/Assembly/RagTagAlign/{sample}.sniffles.homoSV.txt",
     params:
-        outdir = IN_PATH + "/SVCall/nanovar/{sample}",
-    log:
-        IN_PATH + "/log/nanovar_{sample}.log"
+        HomoSVRecord = SCRIPT_DIR + "/HomoSVRecord.py",
+        AFThreshold = 0.9,
+        REThreshold = 20,
     run:
-        ### nanovar: /home/litong/anaconda3/envs/nanovar/bin/nanovar
-        ### --data_type ont, pacbio-clr, pacbio-ccs
-        # shell("nanovar -r {params.RefGenome} -l {input.fastq} -t {threads} -o {params.outdir} >{log} 2>&1")
-        # cmd = "source activate NanoVar && nanovar -t %s --data_type ont --mincov 2 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, params.RefGenome, params.outdir, log)
-        cmd = "source activate nanovar && nanovar -t %s --data_type ont --mincov 3 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, input.assembly, params.outdir, log)
-        print(cmd)
-        os.system(cmd)
+        shell("python {params.HomoSVRecord} --vcf {input.vcf} --out {output.homo} --REThreshold {params.REThreshold} --AFThreshold {params.AFThreshold}")
+
+
 #############################################################
 
 
