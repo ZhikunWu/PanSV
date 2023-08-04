@@ -61,6 +61,7 @@ rule AssemblySummary:
 
 
 
+
 """
 rule nextStats:
     ### https://github.com/raymondkiu/sequence-stats
@@ -407,6 +408,56 @@ rule nextPolish6:
 ##############################################
 
 
+####################### Rank assembly ##############
+rule RankContigs:
+    input:
+        fasta = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon1.fasta",
+    output:
+        fai = IN_PATH + "/Assembly/Polish/{sample}/{sample}_ONT_racon1.fasta.fai",
+        rank = IN_PATH + "/Assembly/Polish/{sample}/{sample}_contig_rank.txt",
+    params:
+        ScaffoldRank = SCRIPT_DIR + "/ScaffoldRank.py"
+    run:
+        shell("samtools faidx {input.fasta}")
+        shell("python {params.ScaffoldRank} --fai {output.fai} --out {output.rank}")
+
+
+def mergeRank(in_file, out_file):
+    files = in_file.split(",")
+    out_h = open(out_file, "w")
+    for f in files:
+        name = f.split("/")[-1].split('_')[0]
+        in_h = open(f, "r")
+        for line in in_h:
+            lines = line.strip().split("\t")
+            out_h.write("%s\t%s\t%s\n" % (name, lines[1], lines[2]))
+        in_h.close()
+    out_h.close()
+
+
+rule MergeRank:
+    input:
+        rank = expand(IN_PATH + "/Assembly/Polish/{sample}/{sample}_contig_rank.txt", sample=SAMPLES),
+    output:
+        rank = IN_PATH + "/Assembly/Polish/Samples_contigs_rank.xls",
+    run:
+        Files = ",".join(input.rank)
+        mergeRank(Files, output.rank)
+
+
+rule MergeRankPlot:
+    input:
+        rank = IN_PATH + "/Assembly/Polish/Samples_contigs_rank.xls",
+    output:
+        pdf = IN_PATH + "/Assembly/Polish/Samples_contigs_rank.pdf",
+    params:
+        ScaffoldRank = SCRIPT_DIR + "/ScaffoldRank.R",
+    run:
+        cmd = "source activate Rmeta && Rscript %s --input %s --pdf %s --width 5 --height 4 " % (params.ScaffoldRank, input.rank, output.pdf)
+        print(cmd)
+        os.system(cmd)
+
+######################################################
 
 
 
@@ -488,6 +539,31 @@ rule RagTag2Ref:
         shell("{params.mashmap} -r {params.RefGenome} -q {input.assembly} --perc_identity 95 --threads {threads} --segLength 50000 --filter_mode one-to-one --output {output.mashmap} > {log} 2>&1")
         shell("cd {params.outPrefix} && {params.generateDotPlot} png  large  {output.mashmap}")
 
+
+
+rule ScaffoldStats:
+    input:
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+    output:
+        stats = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.stats.xls",
+    run:
+        shell("seqkit stats -aT {input.assembly} > {output.stats}")
+
+
+rule ScaffoldStatsMerge:
+    input:
+        stats = expand(IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.stats.xls", sample=SAMPLES),
+    output:
+        stats = IN_PATH + "/Assembly/RagTag/All_sample_ragtag.scaffold.stats.xls",
+    run:
+        Stats = sorted(input.stats)
+        for i in range(len(Stats)):
+            f = Stats[i]
+            if i == 0:
+                cmd = "cat %s > %s" % (f, output.stats)
+            else:
+                cmd = "sed '1d' %s >> %s " % (f, output.stats)
+            os.system(cmd)
 
 ############################################################
 

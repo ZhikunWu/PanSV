@@ -329,78 +329,95 @@ rule buscoSummary:
 
 
 
+########### inspector ###############
+# rule inspector:
+#     input:
+#         assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+#         read = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
+#     output:
+#         summary = IN_PATH + "/Evaluation/Inspector/{sample}/summary_statistics",
+#     params:
+#         inspector = "/home/wuzhikun/software/Inspector/inspector.py",
+#         outDir = IN_PATH + "/Evaluation/Inspector/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + '/log/inspector_{sample}.log' 
+#     run:
+#         shell("python {params.inspector} --contig {input.assembly} --read {input.read} --datatype nanopore  --thread {threads} --outpath {params.outDir} > {log} 2>&1")
+#####################################
 
 
 
 
-######################### RepeatModeler ####################
-rule BuildDatabase:
-    input:
-        #assembly = rules.RagTag.output.scaffold,
-        assembly = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
-    output:
-        nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
-    params:
-        outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
-        outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/BuildDatabase_{sample}.log",
-    run:
-        if not os.path.exists(params.outDir):
-            os.mkdir(params.outDir)
-        # shell("cd {params.outDir} &&  BuildDatabase -name {params.outPrefix} -engine ncbi  {input.assembly} > {log} 2>&1")
-        cmd = "source activate TE2 && cd %s &&  BuildDatabase -name %s -engine ncbi  %s > %s 2>&1" % (params.outDir, params.outPrefix, input.assembly, log)
-        print(cmd)
-        os.system(cmd)
+# ######################### RepeatModeler ####################
+# rule BuildDatabase:
+#     input:
+#         #assembly = rules.RagTag.output.scaffold,
+#         assembly = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
+#     output:
+#         nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
+#     params:
+#         outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
+#         outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/BuildDatabase_{sample}.log",
+#     run:
+#         if not os.path.exists(params.outDir):
+#             os.mkdir(params.outDir)
+#         # shell("cd {params.outDir} &&  BuildDatabase -name {params.outPrefix} -engine ncbi  {input.assembly} > {log} 2>&1")
+#         cmd = "source activate TE2 && cd %s &&  BuildDatabase -name %s -engine ncbi  %s > %s 2>&1" % (params.outDir, params.outPrefix, input.assembly, log)
+#         print(cmd)
+#         os.system(cmd)
 
 
 
-rule repeatModeler:
-    ### http://xuzhougeng.top/archives/Repeat-annotation-with-RepeatModeler
-    input:
-        nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
-    output:
-        lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
-    params:
-        outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
-        outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/repeatModeler_{sample}.log",
-    run:
-        # shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
-        cmd = "source activate TE2 && cd %s &&  RepeatModeler -pa %s -database %s  -engine ncbi > %s 2>&1" % (params.outDir, threads, params.outPrefix, log)
-        print(cmd)
-        os.system(cmd)
+# rule repeatModeler:
+#     ### http://xuzhougeng.top/archives/Repeat-annotation-with-RepeatModeler
+#     input:
+#         nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
+#     output:
+#         lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
+#     params:
+#         outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
+#         outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/repeatModeler_{sample}.log",
+#     run:
+#         # shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
+#         cmd = "source activate TE2 && cd %s &&  RepeatModeler -pa %s -database %s  -engine ncbi > %s 2>&1" % (params.outDir, threads, params.outPrefix, log)
+#         print(cmd)
+#         os.system(cmd)
 
-######################################################
-
-
-#################### repeatMasker ##########
-rule repeatMasker:
-    input:
-        #assembly = rules.RagTag.output.scaffold,
-        assembly = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
-        lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
-    output:
-        # mask = IN_PATH + "/repeatMasker/{species}/{sample}/{sample}.fasta.masked",
-        out = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.fasta.out",
-    threads:
-        THREADS
-    params:
-        outPrefix = IN_PATH + "/Repeat/repeatMasker/{sample}",
-    log:
-        IN_PATH + "/log/repeatMasker_{sample}.log",
-    run:
-        # -libdir <string>
-        #     Path to the RepeatMasker libraries directory.
-        # shell("RepeatMasker -pa {threads} -e ncbi  -gff -poly -lib {input.lib}  -dir {params.outPrefix}  {input.assembly} > {log} 2>&1")
-        cmd = "source activate TE2 && RepeatMasker -pa %s -e ncbi  -gff -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
-        print(cmd)
-        os.system(cmd)
+# ######################################################
 
 
-# ##########################################################
+# #################### repeatMasker ##########
+# rule repeatMasker:
+#     input:
+#         #assembly = rules.RagTag.output.scaffold,
+#         assembly = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
+#         lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
+#     output:
+#         # mask = IN_PATH + "/repeatMasker/{species}/{sample}/{sample}.fasta.masked",
+#         out = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.fasta.out",
+#     threads:
+#         THREADS
+#     params:
+#         outPrefix = IN_PATH + "/Repeat/repeatMasker/{sample}",
+#     log:
+#         IN_PATH + "/log/repeatMasker_{sample}.log",
+#     run:
+#         # -libdir <string>
+#         #     Path to the RepeatMasker libraries directory.
+#         # shell("RepeatMasker -pa {threads} -e ncbi  -gff -poly -lib {input.lib}  -dir {params.outPrefix}  {input.assembly} > {log} 2>&1")
+#         cmd = "source activate TE2 && RepeatMasker -xsmall -nolow -norna -html -gff -pa %s -e ncbi  -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
+#         print(cmd)
+#         os.system(cmd)
+
+
+# # ##########################################################

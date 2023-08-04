@@ -20,14 +20,15 @@ Scaffold_Rank <- function(in_file, pdf_file, height, width) {
     width <- as.numeric(width)
 
     Scaffold <- read_tsv(in_file)
-    colnames(Scaffold) <- c("Scaffold", "Length", "Percentage")
+    colnames(Scaffold) <- c("Assembly", "Length", "Percentage")
     Scaffold$Length <- Scaffold$Length / 1000000
-    Scaffold$Percentage <- Scaffold$Length * 100
+    Scaffold$Percentage <- Scaffold$Percentage * 100
     
-    colors <-c("limegreen", "royalblue1", "gold2", "tomato")
+    colors <-c("limegreen", "royalblue1", "gold2", "tomato", "black")
 
+    print(head(Scaffold))
 
-    rankPlot <- ggplot(Scaffold, aes(x = Percentage, y = Length, fill=Scaffold)) +
+    rankPlot <- ggplot(Scaffold, aes(x = Percentage, y = Length, colour=Assembly)) +
         geom_line() +
         # geom_point() +
         labs(x = "Percentage", y = "Contig length (Mb)") +
@@ -40,8 +41,8 @@ Scaffold_Rank <- function(in_file, pdf_file, height, width) {
         theme(plot.margin = margin(1,1,1,1, "cm")) +
         theme(axis.text = element_text( size=rel(1.3 ))) +
         theme(axis.title = element_text( size=rel(1.4 )))  +
-        guides(fill = FALSE)
-
+        theme(legend.position = "none")
+        
     rankPlot
     ggsave(pdf_file, width=width, height=height)
 }
