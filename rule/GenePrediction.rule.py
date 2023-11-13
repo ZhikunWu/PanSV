@@ -1,49 +1,49 @@
 ############################################################################
-rule BuildDatabase:
+# rule BuildDatabase:
+#     input:
+#         assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+#     output:
+#         nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
+#     params:
+#         outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
+#         outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/BuildDatabase_{sample}.log",
+#     run:
+#         if not os.path.exists(params.outDir):
+#             os.mkdir(params.outDir)
+#         shell("cd {params.outDir} &&  BuildDatabase -name {params.outPrefix} -engine ncbi  {input.assembly} > {log} 2>&1")
+
+
+
+# rule repeatModeler:
+#     ### http://xuzhougeng.top/archives/Repeat-annotation-with-RepeatModeler
+#     input:
+#         nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
+#     output:
+#         lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
+#     params:
+#         outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
+#         outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/repeatModeler_{sample}.log",
+#     run:
+#         shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
+
+
+
+
+rule repeatMasker0:
     input:
-        assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        lib = IN_PATH + "/BACKUP/Repeat/Vigna_unguiculata_contig-families.fa",
     output:
-        nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
-    params:
-        outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
-        outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/BuildDatabase_{sample}.log",
-    run:
-        if not os.path.exists(params.outDir):
-            os.mkdir(params.outDir)
-        shell("cd {params.outDir} &&  BuildDatabase -name {params.outPrefix} -engine ncbi  {input.assembly} > {log} 2>&1")
-
-
-
-rule repeatModeler:
-    ### http://xuzhougeng.top/archives/Repeat-annotation-with-RepeatModeler
-    input:
-        nhr = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.nhr",
-    output:
-        lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
-    params:
-        outPrefix = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}",
-        outDir = IN_PATH + "/Repeat/repeatModeler/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/repeatModeler_{sample}.log",
-    run:
-        shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
-
-
-
-
-rule repeatMasker:
-    input:
-        assembly = rules.RagTag.output.scaffold,
-        lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
-    output:
-        mask = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.fasta.masked",
-        out = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.fasta.out",
+        mask = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.masked",
+        out = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.out",
     threads:
         THREADS
     params:
@@ -51,7 +51,9 @@ rule repeatMasker:
     log:
         IN_PATH + "/log/repeatMasker_{sample}.log",
     run:
-        shell("RepeatMasker -pa {threads} -e ncbi  -gff -poly -lib {input.lib}  -dir {params.outPrefix}  {input.assembly} > {log} 2>&1")
+        cmd = "source activate TE2 && RepeatMasker -xsmall -nolow -norna -html -gff -pa %s -e ncbi  -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
+        print(cmd)
+        os.system(cmd)
 #############################################################
 
 
@@ -59,7 +61,7 @@ rule repeatMasker:
 ####################### HISAT alignment #####################
 rule HisatIndex:
     input:
-        assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
     output:
         ht = IN_PATH + "/GenePrediction/RNA/HisatIndex/{sample}_hisat.1.ht2",
     params:
@@ -79,6 +81,27 @@ rule HisatIndex:
 
 
 ########################### align each #################
+rule fastpRNA:
+    input:
+        R1 = IN_PATH + "/raw/{sample}_RNA.R1.fastq.gz",
+        R2 = IN_PATH + "/raw/{sample}_RNA.R2.fastq.gz",
+    output:
+        R1 = IN_PATH + '/clean/{sample}.RNA.R1.fq.gz',
+        R2 = IN_PATH + '/clean/{sample}.RNA.R2.fq.gz',
+    threads:
+        THREADS
+    params:
+        length_required = config["length_required"],
+        qualified_quality_phred = config["qualified_quality_phred"],
+        unqualified_percent_limit = config["unqualified_percent_limit"],
+        cut_window_size = config["cut_window_size"],
+        cut_mean_quality = config["cut_mean_quality"],
+    log:
+        IN_PATH + "/log/trim/{sample}.log", 
+    run:
+        shell("fastp --in1 {input.R1} --in2 {input.R2} --out1 {output.R1} --out2 {output.R2} --thread {threads} --compression 2 --length_required {params.length_required} --qualified_quality_phred {params.qualified_quality_phred}  --unqualified_percent_limit {params.unqualified_percent_limit} --cut_front --cut_tail --cut_window_size {params.cut_window_size} --cut_mean_quality {params.cut_mean_quality} >{log} 2>&1")
+
+
 rule hisatEach:
     input:
         ht = rules.HisatIndex.output.ht,
@@ -126,7 +149,7 @@ rule stringtie:
 rule stringtieFasta:
     input:
         gtf = rules.stringtie.output.gtf,
-        assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
     output:
         fasta = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie_exon.fasta",
     threads:
@@ -188,7 +211,7 @@ rule TansMerge:
 ######### using masked fasta ?
 rule snap:
     input:
-        assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
     output:
         protein = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_protein.fa",
         transcript = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_transcript.fa",
@@ -205,7 +228,7 @@ rule snap:
 
 rule augustus:
     input:
-        assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
         # assembly = IN_PATH + "/Repeats/repeatModeler/Vigna_unguiculata_contig/Vigna_unguiculata_assembly.fasta.masked",
     output:
         predict = IN_PATH + "/GenePrediction/augustus/{sample}/{sample}_prediction.gff",
@@ -243,21 +266,21 @@ rule MergeProtein:
 
 
 ##################### TE ################
-rule EDTA:
-    input:
-        assembly = rules.RagTag.output.scaffold,
-    output:
-        # log = IN_PATH + "/log/EDTA_{sample}.log",
-        TE = IN_PATH + "/Repeats/EDTA/{sample}/ragtag.scaffold.fasta.mod.EDTA.anno/ragtag.scaffold.fasta.mod.EDTA.TE.fa.cln",
-    params:
-        EDTA = config["EDTA"],
-        CDSSeq = config["CDSSeq"],
-        outDir = IN_PATH + "/Repeats/EDTA/{sample}",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/EDTA_{sample}.log",
-    run:
-        shell("cd {params.outDir} && perl {params.EDTA} --step all  --genome  {input.assembly}  --species others --cds {params.CDSSeq} --overwrite 1 --sensitive 1 --anno 1 --evaluate 1 --threads {threads} > {log} 2>&1")
+# rule EDTA:
+#     input:
+#         assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+#     output:
+#         # log = IN_PATH + "/log/EDTA_{sample}.log",
+#         TE = IN_PATH + "/Repeats/EDTA/{sample}/ragtag.scaffold.fasta.mod.EDTA.anno/ragtag.scaffold.fasta.mod.EDTA.TE.fa.cln",
+#     params:
+#         EDTA = config["EDTA"],
+#         CDSSeq = config["CDSSeq"],
+#         outDir = IN_PATH + "/Repeats/EDTA/{sample}",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/EDTA_{sample}.log",
+#     run:
+#         shell("cd {params.outDir} && perl {params.EDTA} --step all  --genome  {input.assembly}  --species others --cds {params.CDSSeq} --overwrite 1 --sensitive 1 --anno 1 --evaluate 1 --threads {threads} > {log} 2>&1")
 
 ########################################

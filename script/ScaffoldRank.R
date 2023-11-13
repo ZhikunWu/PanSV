@@ -31,7 +31,7 @@ Scaffold_Rank <- function(in_file, pdf_file, height, width) {
     rankPlot <- ggplot(Scaffold, aes(x = Percentage, y = Length, colour=Assembly)) +
         geom_line() +
         # geom_point() +
-        labs(x = "Percentage", y = "Contig length (Mb)") +
+        labs(x = "Percentage (%)", y = "Contig length (Mb)") +
         theme(axis.text.x = element_text(angle=0,hjust=0.5)) + 
         theme( panel.background=element_blank(),panel.grid.major=element_blank(), panel.grid.minor=element_blank(), panel.border = element_blank(), plot.background=element_blank(), axis.line = element_line(colour = "black")) +
         theme(axis.text.x=element_blank()) + #axis.ticks=element_blank()

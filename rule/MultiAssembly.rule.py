@@ -568,6 +568,40 @@ rule ScaffoldStatsMerge:
 ############################################################
 
 
+##################### RagTag Revised #########
+rule RevisedMap:
+    input:
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.revised.fasta",
+    output:
+        mashmap = IN_PATH + "/Assembly/RevisedMashmap/{sample}/mashmap.out.txt",
+    params:
+        RefGenome = config["RefGenome"],
+        mashmap = "/home/wuzhikun/software/mashmap-Linux64-v2.0/mashmap",
+        generateDotPlot = "/home/wuzhikun/software/mashmap-Linux64-v2.0/MashMap/scripts/generateDotPlot",
+        outPrefix = IN_PATH + "/Assembly/RevisedMashmap/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/RevisedMashmap_{sample}.log"
+    run:
+        shell("{params.mashmap} -r {params.RefGenome} -q {input.assembly} --perc_identity 95 --threads {threads} --segLength 50000 --filter_mode one-to-one --output {output.mashmap} > {log} 2>&1")
+        shell("cd {params.outPrefix} && {params.generateDotPlot} png  large  {output.mashmap}")    
+
+###############################################
+
+
+########################## Scaffold ##############
+rule Scaffold:
+    input:
+        # assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.revised.fasta",
+        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+    output:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    threads:
+        THREADS
+    run:
+        shell("seqkit seq -u -w 60 {input.assembly} | sed 's/_RagTag//g' > {output.assembly}")
+#####################################################
 
 
 

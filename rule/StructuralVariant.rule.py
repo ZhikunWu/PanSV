@@ -84,6 +84,19 @@ rule BAMStats2:
     run:
         shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
 
+rule BAMStats3:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_flag_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats3_{sample}.log"
+    run:
+        shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
+
+
 
 rule Sniffles1:
     input:
@@ -163,6 +176,7 @@ rule snf:
         shell("~/anaconda3/envs/sniffles2/bin/sniffles --threads {threads} --minsupport 5 --minsvlen 50 --sample-id {wildcards.sample} --reference {params.RefGenome} --tandem-repeats {params.annotation} --input {input.bam} --vcf {output.vcf} --snf {output.snf}  --long-ins-length 50000  > {log} 2>&1")
 
 
+
 rule MergeVCF:
     input:
         snf = expand(IN_PATH + "/SVCall/Sniffles2/snf/{sample}.snf", sample=SAMPLES),
@@ -181,6 +195,186 @@ rule MergeVCF:
         shell("~/anaconda3/envs/sniffles2/bin/sniffles --input {Samples} --vcf {output.vcf} --threads {threads}  --reference {params.RefGenome} --tandem-repeats {params.annotation} --minsupport 5 --minsvlen 50  --long-ins-length 50000 > {log} 2>&1")
 
 
+rule VCFFilt:
+    input:
+        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge.vcf",
+    output:
+        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
+    params:
+        MergeVCFFilt = SCRIPT_DIR + "/MergeVCFFilt.py",
+        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt_out.vcf",
+    run:
+        shell("python {params.MergeVCFFilt} --vcf {input.vcf} --out {output.vcf} > {params.vcf}")
+
+
+
+rule VCF2vgFormat:
+    input:
+        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
+    output:
+        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+    params:
+        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
+        VCF2vgFormat = SCRIPT_DIR + "/VCF2vgFormat.py",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/VCF2vgFormat.log"
+    run:
+        shell("python {params.VCF2vgFormat} --vcf {input.vcf} --out {params.vcf} --fasta {params.RefGenome} > {log} 2>&1")
+        shell("bgzip {params.vcf}")
+        shell("tabix -p vcf {output.vcf}")
+#################################################################
+
+
+############## Extract #################
+rule extract:
+    input:
+        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
+    output:
+        vcf = IN_PATH + "/SVCall/PanGraph/Extract/{sample}_SV_extract.vcf",
+    params:
+        PanSVExtract = SCRIPT_DIR + "/PanSVExtract.py",
+    run:
+        shell("python {params.PanSVExtract} --vcf {input.vcf} --out {output.vcf} --sample {wildcards.sample}")
+        
+######################################
+
+
+
+
+# rule simpleVG:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+#     output:
+#         vg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_construct.vg",
+#     threads:
+#         THREADS
+#     params:
+#         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+#     log:
+#         IN_PATH + "/log/simpleVG.log"
+#     run:
+#         shell("vg construct -p  --threads {threads}  -r  {params.RefGenome} -v {input.vcf} > {output.vg} 2>> {log}")
+
+
+
+############################### giraffe ########################
+rule GiraffeIndex:
+    input:
+        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+    output:
+        dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+        m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
+    params:
+        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+        outPrefix = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe",
+    log:
+        IN_PATH + "/log/GiraffeIndex.log"
+    run:
+        shell("/home/wuzhikun/software/vg autoindex --workflow giraffe -r {params.RefGenome} -v {input.vcf} -p {params.outPrefix} > {log} 2>&1")
+
+
+rule vgConvert:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+    output:
+        xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
+    run:
+        shell("/home/wuzhikun/software/vg convert -x {input.gbz}  > {output.xg}")
+
+
+rule snarls:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+    output:
+        snarls = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.snarls.pb",
+    threads:
+        THREADS
+    run:
+        shell("/home/wuzhikun/software/vg snarls -t {threads} {input.gbz} > {output.snarls}")
+
+
+rule Giraffe:
+    input:
+        dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+        m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
+        xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
+        R1 = "/home/wuzhikun/Project/PanVigna/clean/{sample}_NGS.R1.fastq.gz",
+        R2 = "/home/wuzhikun/Project/PanVigna/clean/{sample}_NGS.R2.fastq.gz",
+    output:
+        gam = IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/Giraffe_{sample}.log"
+    run:
+        shell("/home/wuzhikun/software/vg giraffe --gbz-name {input.gbz} --dist-name {input.dist} --minimizer-name {input.m} --xg-name {input.xg} --fastq-in {input.R1} --fastq-in {input.R2}   --threads {threads} --sample {wildcards.sample}  -o gam  >  {output.gam} 2>{log}")
+
+
+
+rule pack:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+        gam = temp(IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam"),
+    output:
+        pack = IN_PATH + "/SVCall/NGS/{sample}.giraffe.pack",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/pack_{sample}.log"
+    run:
+        shell("/home/wuzhikun/software/vg pack -t {threads} -x {input.gbz} -g {input.gam} -Q5 -o {output.pack} > {log} 2>&1")
+
+
+
+
+rule gamstat:
+    input:
+        gam = IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam",
+    output:
+        stats = IN_PATH + "/SVCall/NGS/{sample}.giraffe.stats.txt",
+    run:
+        shell("/home/wuzhikun/software/vg stats -a {input.gam} > {output.stats}")
+
+
+rule call:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+        snarls = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.snarls.pb",
+        pack = IN_PATH + "/SVCall/NGS/{sample}.giraffe.pack",
+    output:
+        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf.gz",
+    params:
+        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf",
+    threads:
+        THREADS
+    run:
+        shell("/home/wuzhikun/software/vg call -t {threads} -k {input.pack} --min-support 2,2 -z -a -r {input.snarls} -z -s {wildcards.sample} {input.gbz} > {params.vcf}")
+        shell("bgzip {params.vcf}")
+        shell("tabix -p vcf {output.vcf}")
+
+
+rule CallFilt:
+    input:
+        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf.gz",
+    output:
+        vcf0 = temp(IN_PATH + "/SVCall/NGS/{sample}.giraffe.temp.vcf"),
+        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.filt.vcf",
+    params:
+        NGSgiraffeFilt = SCRIPT_DIR + "/NGSgiraffeFilt.py",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/CallFilt_{sample}.log"
+    run:
+        shell("pigz -p {threads} -dc {input.vcf} > {output.vcf0}")
+        shell("python {params.NGSgiraffeFilt} --vcf {output.vcf0} --out {output.vcf} --altThreshold 10 > {log} 2>&1")
+
+##############################################################
 
 
 # rule MergeSV:
@@ -201,6 +395,9 @@ rule MergeVCF:
 #         # shell("jasmine --output_genotypes --ignore_strand --keep_var_ids threads={threads} file_list={output.fileList} out_file={output.vcf} > {log} 2>&1")
 #         cmd = "source activate nanovar && jasmine --output_genotypes --ignore_strand --keep_var_ids threads=%s file_list=%s out_file=%s > %s 2>&1" % (threads, output.fileList, output.vcf, log)
 #         os.system(cmd)
+
+
+
 
 
 

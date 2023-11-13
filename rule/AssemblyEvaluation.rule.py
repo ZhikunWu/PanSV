@@ -38,6 +38,26 @@
 
 ######################################
 
+######################## scaffold stats ##############
+rule scaffoldStats:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    output:
+        stat = IN_PATH + "/Assembly/Scaffold/Stats/{sample}.scaffold.stats.txt",
+    run:
+        shell("seqkit stats -aT {input.assembly} > {output.stat}")
+
+rule anchorRatio:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    output:
+        anchor = IN_PATH + "/Assembly/Scaffold/Stats/{sample}.anchor.ratio.txt",
+    params:
+        AnchorRatio = SCRIPT_DIR + "/AnchorRatio.py",
+    run:
+        shell("python {params.AnchorRatio} --fasta {input.assembly} --out {output.anchor}")
+
+#####################################################
 
 
 ###################### Coverage #########################
@@ -51,6 +71,7 @@ rule ONTCov:
         IN_PATH + "/log/ONTCov_{sample}.log"
     run:
         shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+
 
 
 rule ONTDepth:
@@ -211,7 +232,7 @@ def merge_qv(in_file, out_file):
 rule SatSeqAlign:
     input:
         fa =  "/home/wuzhikun/Project/Vigna/BACKUP_230424/Vigna_SRF/Vigna_satellite.fa",
-        assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
     output:
         paf = IN_PATH + "/Centromere/SRF/{sample}_srf_aln.paf",
     threads:
@@ -283,7 +304,51 @@ rule targetRegion:
 #########################################
 
 
+################# centromere2 ##########
+rule SatSeqAlign2:
+    input:
+        fa =  "/home/wuzhikun/Project/PanVigna/BACKUP/centromere/cent_satellite_seq.fasta",
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    output:
+        paf = IN_PATH + "/Centromere/CEN/{sample}_satellite_aln.paf",
+    threads:
+        THREADS
+    params:
+        srfutils = "/home/wuzhikun/software/srf/srfutils.js",
+    log:
+        IN_PATH + "/log/SatSeqAlign2_{sample}.log"
+    run:
+        shell("minimap2 -c -t {threads}  -N1000000 -f1000 -r100,100 <({params.srfutils} enlong {input.fa}) {input.assembly} > {output.paf}")
 
+
+rule paf2bed2:
+    input:
+        paf =  IN_PATH + "/Centromere/CEN/{sample}_satellite_aln.paf",
+    output:
+        bed = IN_PATH + "/Centromere/CEN/{sample}_satellite_aln.bed",
+        abun = IN_PATH + "/Centromere/CEN/{sample}_satellite_aln.len",
+    params:
+        srfutils = "/home/wuzhikun/software/srf/srfutils.js",
+    threads:
+        THREADS
+    run:
+        shell("{params.srfutils} paf2bed {input.paf} > {output.bed}")
+        shell("{params.srfutils} bed2abun {output.bed} > {output.abun}")
+
+
+rule cluster2:
+    input:
+        bed = IN_PATH + "/Centromere/CEN/{sample}_satellite_aln.bed",
+    output:
+        bed = temp(IN_PATH + "/Centromere/CEN/{sample}_srf_aln_temp.bed"),
+        cluster = IN_PATH + "/Centromere/CEN/{sample}_srf_aln_cluster.bed",
+    threads:
+        THREADS
+    run:
+        shell("cut -f 1-3 {input.bed} > {output.bed}")
+        shell("bedtools cluster -i {output.bed} -d 100000 > {output.cluster}")
+
+########################################
 
 
 
@@ -332,7 +397,7 @@ rule buscoSummary:
 ########### inspector ###############
 # rule inspector:
 #     input:
-#         assembly = IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.fasta",
+#         assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
 #         read = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
 #     output:
 #         summary = IN_PATH + "/Evaluation/Inspector/{sample}/summary_statistics",
@@ -397,27 +462,27 @@ rule buscoSummary:
 
 
 # #################### repeatMasker ##########
-# rule repeatMasker:
-#     input:
-#         #assembly = rules.RagTag.output.scaffold,
-#         assembly = IN_PATH + "/Assembly/Polish/{sample}/Racon/{sample}_ONT_polish_racon3.fasta",
-#         lib = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}-families.fa",
-#     output:
-#         # mask = IN_PATH + "/repeatMasker/{species}/{sample}/{sample}.fasta.masked",
-#         out = IN_PATH + "/Repeat/repeatModeler/{sample}/{sample}.fasta.out",
-#     threads:
-#         THREADS
-#     params:
-#         outPrefix = IN_PATH + "/Repeat/repeatMasker/{sample}",
-#     log:
-#         IN_PATH + "/log/repeatMasker_{sample}.log",
-#     run:
-#         # -libdir <string>
-#         #     Path to the RepeatMasker libraries directory.
-#         # shell("RepeatMasker -pa {threads} -e ncbi  -gff -poly -lib {input.lib}  -dir {params.outPrefix}  {input.assembly} > {log} 2>&1")
-#         cmd = "source activate TE2 && RepeatMasker -xsmall -nolow -norna -html -gff -pa %s -e ncbi  -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
-#         print(cmd)
-#         os.system(cmd)
+rule repeatMasker:
+    input:
+        #assembly = rules.RagTag.output.scaffold,
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        lib = IN_PATH + "/BACKUP/Repeat/Vigna_unguiculata_contig-families.fa",
+    output:
+        mask = IN_PATH + "/Repeat/RepeatMasker/{sample}/{sample}.scaffold.fasta.masked",
+        tbl = IN_PATH + "/Repeat/RepeatMasker/{sample}/{sample}.scaffold.fasta.tbl",
+    threads:
+        THREADS
+    params:
+        outPrefix = IN_PATH + "/Repeat/RepeatMasker/{sample}",
+    log:
+        IN_PATH + "/log/repeatMasker_{sample}.log",
+    run:
+        # -libdir <string>
+        #     Path to the RepeatMasker libraries directory.
+        # shell("RepeatMasker -pa {threads} -e ncbi  -gff -poly -lib {input.lib}  -dir {params.outPrefix}  {input.assembly} > {log} 2>&1")
+        cmd = "source activate TE2 && RepeatMasker -xsmall -nolow -norna -html -gff -pa %s -e ncbi  -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
+        print(cmd)
+        os.system(cmd)
 
 
-# # ##########################################################
+###########################################################

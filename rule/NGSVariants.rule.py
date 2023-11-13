@@ -85,19 +85,20 @@ rule AddGroup:
 
 
 ########################### GATK #################
-rule HaplotypeCaller:
+rule HaplotypeCallerWhole:
     input:
         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
     output:
-        vcf = temp(IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf'),
+        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf',
         # idx = IN_PATH + '/VCF/{sample}_{Chr}.gvcf.idx',
     params:
         GATK4 = config['GATK4'],
         REF = config['RefGenome'],
+        tmpDir = IN_PATH + '/NGS/VCF/TempDir',
     threads:
         THREADS
     log:
-        IN_PATH + "/log/{sample}_{Chr}.HaplotypeCaller.log",
+        IN_PATH + "/log/{sample}.HaplotypeCaller.log",
     run:
         ### -L 20:10,000,000-10,200,000
         ### -L hg38.exome.regions.bed
@@ -107,18 +108,188 @@ rule HaplotypeCaller:
         ##### -nt / --num_threads controls the number of data threads sent to the processor (acting at the machine level)
         ##### -nct / --num_cpu_threads_per_data_thread controls the number of CPU threads allocated to each data thread (acting at the core level)
         ###  -variant_index_type LINEAR -variant_index_parameter 128000 
-        shell('java -Xmx10g -jar {params.GATK4} HaplotypeCaller -R {params.REF} -L {wildcards.Chr} -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads}  >{log} 2>&1') 
         ### -gt_mode DISCOVERY -stand_call_conf 30  -stand_emit_conf 30
+        # shell('java -Xmx30g -jar {params.GATK4} HaplotypeCaller -R {params.REF}  -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads}  >{log} 2>&1') 
+        shell('gatk HaplotypeCaller -R {params.REF}  -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads} --tmp-dir {params.tmpDir} >{log} 2>&1') 
 
 
-
-rule bgzip:
+rule Wholebgzip:
     input:
-        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf',
+        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf',
     output:
-        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf.gz',
+        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf.gz',
     run:
         shell("bgzip {input.vcf}")
+        shell("tabix -p vcf {output.vcf}")
+
+#################################################################
+
+
+
+
+
+# rule GenomicsDBImportContig:
+#     input:
+#         gvcf = expand(IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf.gz', sample=SAMPLES),
+#     output:
+#         genomicsdb = directory(IN_PATH + '/NGS/Joint/genomicsdb/Contigs_genomicsdb'),
+#     params:
+#         GATK4 = config['GATK4'],
+#         Chrs = "Chr01,Chr02,Chr03,Chr04,Chr05,Chr06,Chr07,Chr08,Chr09,Chr10,Chr11",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/contig.GenomicsDBImport.log",
+#     run:
+#         GVCFs = " -V ".join(sorted(input.gvcf))
+#         shell("gatk GenomicsDBImport   -V {GVCFs} --genomicsdb-workspace-path {output.genomicsdb} -XL {params.Chrs} > {log} 2>&1")
+
+
+# rule jointCallContig:
+#     input:
+#         genomicsdb = IN_PATH + '/NGS/Joint/genomicsdb/Contigs_genomicsdb',
+#     output:
+#         vcf = IN_PATH + '/NGS/Joint/VCF/Contigs_joint_variant.vcf',
+#     params:
+#         GATK4 = config['GATK4'],
+#         REF = config['RefGenome'],
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/contigs.jointCall.log",
+#     run:
+#         shell("gatk GenotypeGVCFs  -R {params.REF} -V gendb://{input.genomicsdb} -O {output.vcf} --allow-old-rms-mapping-quality-annotation-data  > {log} 2>&1")
+
+
+
+
+
+
+# rule MergeChr:
+#     input:
+#         vcf = expand(IN_PATH + '/NGS/Joint/VCF/{Chr}_joint_variant.vcf', Chr=CHRS),
+#         contig = IN_PATH + '/NGS/Joint/VCF/Contigs_joint_variant.vcf',
+#     output:
+#         vcf = IN_PATH + '/NGS/Joint/VCF/Samples_Chrs_joint_variant.vcf',
+#     run:
+#         Chrs = " ".join(sorted(input.vcf))
+#         shell("bcftools concat -o {output.vcf} {Chrs} {input.contig} ")
+        
+############################################
+
+
+################### vcf to ped ###############
+# rule vcfnorm:
+#     input:
+#         vcf = IN_PATH + '/NGS/Joint/VCF/Samples_Chrs_joint_variant.vcf',
+#     output:
+#         vcf = IN_PATH + '/NGS/Joint/VCF/Samples_Chrs_joint_variant_norm.vcf',
+#     run:
+#         shell("bcftools norm -m -any -NO z -O v -o {output.vcf} {input.vcf}")
+
+
+# rule vcf2ped:
+#     input:
+#         vcf = IN_PATH + '/NGS/Joint/VCF/Samples_Chrs_joint_variant_norm.vcf',
+#     output:
+#         Ped = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant.ped',
+#         Map = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant.map',
+#     params:
+#         outPrefix = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant',
+#         Map = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant-1.map',
+#     run:
+#         shell("plink2 --vcf {input.vcf}  --recode ped   --out {params.outPrefix} > {log} 2>&1")
+#         cmd = """awk '{print $1"\t"$1"_"$4"\t"$3"\t"$4}' %s > %s """ % (output.Map, params.Map)
+#         print(cmd)
+#         os.system(cmd)
+#         shell("mv {params.Map} {output.Map}")
+
+
+# rule pedFilt:
+#     input:
+#         Ped = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant.ped',
+#         Map = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant.map',
+#     output:
+#         bed = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMiss.bed',
+#     params:
+#         inPrefix = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant',
+#         outPrefix = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMiss',
+#     log:
+#         IN_PATH + "/log/pedFilt.log",
+#     run:
+#         shell("plink2 --pedmap {params.inPrefix}  --mind 0.2 --make-bed  --out {params.outPrefix} > {log} 2>&1")
+    
+
+# rule FiltMAF:
+#     input:
+#         bed = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMiss.bed',
+#     output:
+#         bed = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMAF.bed',
+#     params:
+#         inPrefix = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMiss',
+#         outPrefix = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMAF',
+#     log:
+#         IN_PATH + "/log/FiltMAF.log",
+#     run:
+#         shell("plink --bfile {params.inPrefix} --make-bed --maf 0.05  --out {params.outPrefix} > {log} 2>&1")
+
+
+# rule PCA:
+#     input:
+#         bed = IN_PATH + '/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMAF.bed',
+#     output:
+#         eigenvec = IN_PATH + "/NGS/Joint/Plink/Samples_Chrs_SNV_PCA.eigenvec",
+#         eigenval = IN_PATH + "/NGS/Joint/Plink/Samples_Chrs_SNV_PCA.eigenval",
+#     params:
+#         inPrefix = IN_PATH + "/NGS/Joint/Plink/Samples_Chrs_joint_variant_FiltMAF",
+#         outPrefix = IN_PATH + "/NGS/Joint/Plink/Samples_Chrs_SNV_PCA",
+#     run:
+#         shell("plink2 --bfile {params.inPrefix} --pca 10 --out {params.outPrefix} > {log} 2>&1")
+
+
+###############################################
+
+
+
+
+######################################################################
+# rule HaplotypeCaller:
+#     input:
+#         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
+#     output:
+#         vcf = temp(IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf'),
+#         # idx = IN_PATH + '/VCF/{sample}_{Chr}.gvcf.idx',
+#     params:
+#         GATK4 = config['GATK4'],
+#         REF = config['RefGenome'],
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/{sample}_{Chr}.HaplotypeCaller.log",
+#     run:
+#         ### -L 20:10,000,000-10,200,000
+#         ### -L hg38.exome.regions.bed
+#         ### --dbsnp dbSNP.vcf
+#         ### --variant_index_type LINEAR
+#         ### --variant_index_parameter 128000
+#         ##### -nt / --num_threads controls the number of data threads sent to the processor (acting at the machine level)
+#         ##### -nct / --num_cpu_threads_per_data_thread controls the number of CPU threads allocated to each data thread (acting at the core level)
+#         ###  -variant_index_type LINEAR -variant_index_parameter 128000 
+#         shell('java -Xmx10g -jar {params.GATK4} HaplotypeCaller -R {params.REF} -L {wildcards.Chr} -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads}  >{log} 2>&1') 
+#         ### -gt_mode DISCOVERY -stand_call_conf 30  -stand_emit_conf 30
+
+
+
+# rule bgzip:
+#     input:
+#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf',
+#     output:
+#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf.gz',
+#     run:
+#         shell("bgzip {input.vcf}")
+#         shell("tabix -p vcf {output.vcf}")
+
+
 ##################################################
 
 
@@ -134,7 +305,7 @@ rule BAMStats:
     log:
         IN_PATH + "/log/BAMStats_{sample}.log"
     run:
-        shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
+        shell("samtools flagstat --threads {threads} {input.bam} > {output.stat} 2>{log}")
 
 
 ########################################
@@ -142,12 +313,12 @@ rule BAMStats:
 
 
 
+
 # rule HaplotypeCallerMerge:
 #     input:
-#         vcf = expand(IN_PATH + '/VCF/{sample}_{Chr}.g.vcf', sample=SAMPLES, Chr=CHRS),
-#         contig = IN_PATH + '/VCF/contig_{sample}.g.vcf',
+#         vcf = expand(IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf.gz', sample=SAMPLES, Chr=CHRS),
 #     output:
-#         vcf = IN_PATH + '/VCF/{sample}.all.g.vcf',
+#         vcf = IN_PATH + '/NGS/VCF/{sample}.all.g.vcf',
 #     threads:
 #         THREADS
 #     run:
@@ -166,6 +337,7 @@ rule BAMStats:
 #                 os.system(cmd)
 #         cmd =  "grep -v '^#' %s >> %s " %  (input.contig, output.vcf)
 #         os.system(cmd)
+
 
 
 # rule HiFireplaceGATK2:

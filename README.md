@@ -34,3 +34,5 @@
 * [HGSVC2 assembly](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HGSVC2/release/v1.0/assemblies/)
 * [HGSVC3 dataset](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HGSVC3/working/)
 * [NHGRI_UCSU](https://s3-us-west-2.amazonaws.com/human-pangenomics/index.html?prefix=NHGRI_UCSC_panel/)
+* [phytozome](https://phytozome-next.jgi.doe.gov/)
+

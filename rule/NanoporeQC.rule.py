@@ -124,6 +124,23 @@ rule RawNGSStats:
         shell("seqkit stats -aT {input.R1} {input.R2} > {output.stats}")
 
 
+rule MergeStat:
+    input:
+        stats = expand(IN_PATH + "/QualityControl/NGS/raw/{sample}_NGS.raw.stats.txt", sample=SAMPLES),
+    output:
+        stats = IN_PATH + "/QualityControl/NGS/raw/Samples_NGS_all.raw.stats.xls",
+    run:
+        Stats = sorted(input.stats)
+        for i in range(len(Stats)):
+            s = Stats[i]
+            if i == 0:
+                cmd = "cat %s > %s" % (s, output.stats)
+            else:
+                cmd = "sed '1d' %s >> %s" % (s, output.stats)
+            os.system(cmd)
+            
+
+
 
 rule NGSStats:
     input:
@@ -136,6 +153,15 @@ rule NGSStats:
     run:
         shell("seqkit stats -aT {input.R1} {input.R2} > {output.stats}")
 
+
+rule ReadMd5:
+    input:
+        R1 = IN_PATH + "/raw/{sample}_NGS.R1.fastq.gz",
+        R2 = IN_PATH + "/raw/{sample}_NGS.R2.fastq.gz",
+    output:
+        md5 = IN_PATH + "/QualityControl/md5/{sample}_raw_read.md5",
+    run:
+        shell("md5sum {input.R1} {input.R2} > {output.md5}")
 
 #############################################################
 
