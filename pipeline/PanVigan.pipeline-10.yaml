@@ -1,0 +1,168 @@
+PIPE_DIR: /home/wuzhikun/github/PanSV/pipeline
+SCRIPT_DIR: /home/wuzhikun/github/PanSV/script
+RULE_DIR: /home/wuzhikun/github/PanSV/rule
+#SRC_DIR: /home/wuzhikun/github/PanSV/src
+
+project_path: /home/wuzhikun/Project/PanSV
+THREADS: 3
+ThreadFold: 1
+Memory: "-Xmx30g"
+
+
+
+### quality control
+length_required: 60
+qualified_quality_phred: 15
+unqualified_percent_limit: 30
+cut_window_size: 1
+cut_mean_quality: 20
+
+
+# ### NanoFilt
+# readtype: "1D"
+# minQuality: 7
+# minLength: 500
+# headcrop: 20
+# tailcrop: 15
+
+
+### windows
+window: 500000
+sliding: 100000
+
+### ReadDepthWinPlot
+width: 5
+height: 8
+maxDepth: 40
+
+picard: /home/wuzhikun/anaconda3/envs/WGS/bin/picard.jar
+GATK3: /home/wuzhikun/anaconda3/envs/WGS/bin/GenomeAnalysisTK.jar
+GATK4: /home/wuzhikun/software/gatk-4.0.6.0/gatk-package-4.0.6.0-local.jar
+pilon: /home/wuzhikun/anaconda3/envs/Assembly3/pilon-1.23.jar
+#RefGenome: /home/wuzhikun/Project/PanSV/BACKUP/Assembly/Fengchan6/Vigna_unguiculata_assembly.fasta
+RefGenome: /home/wuzhikun/database/genome/Vigna_unguiculata/G98/Lachesis_assembly_changed.fa
+
+SAMPLES:
+  - E832
+  - E834
+  - E920
+  - E829
+  - E838
+  - E858
+
+
+SAMPLESo:
+  - CPG01
+  - CPG02
+  - CPG03
+  - CPG05
+  - CPG06
+  - CPG08
+  - CPG09
+  - CPG10
+  - CPG11
+  - CPG12
+  - CPG13
+  - CPG14
+  - CPG15
+  - CPG16
+  - CPG17
+  - CPG18
+  - CPG19
+  - CPG20
+  - CPG21
+  - CPG22
+  - CPG23
+  - CPG24
+  - CPG25
+  - CPG27
+  - CPG28
+  - CPG29
+  - CPG30
+  - CPG31
+  - CPG32
+  - CPG33
+  - CPG34
+  - CPG35
+  - CPG36
+  - CPG37
+  - Ni933
+  - SPS1
+  - SRR22136012
+  - SRR22136013
+  - SRR22136015
+  - SRR22136016
+  - SRR22136022
+  - SRR22136023
+  - SRR22136024
+  - SRR22136026
+  - SRR22136028
+  - SRR22136031
+  - SRR22136033
+  - SRR22136034
+  - SRR22136035
+  - SRR22136036
+  - SRR22136039
+  - SRR22136045
+  - SRR22136046
+  - SRR22136047
+  - SRR22136056
+  - SRR22136057
+  - SRR22136061
+  - SRR22136062
+  - SRR22136069
+  - SRR22136072
+  - SRR3716681
+  - SRR3716682
+  - SRR3716683
+  - SRR3716684
+  - SRR3716685
+  - SRR3716686
+  - SRR3716687
+  - SRR3716688
+  - SRR3716689
+  - SRR3716690
+  - SRR3716691
+  - SRR3716692
+  - SRR3716693
+  - SRR3716694
+  - SRR3716695
+  - SRR3716696
+  - SRR3716697
+  - SRR3716698
+  - SRR3716699
+  - SRR3716700
+  - SRR3716701
+  - SRR3716702
+  - SRR3716703
+  - SRR3716704
+  - SRR3716705
+  - SRR3716706
+  - SRR3716707
+  - SRR3716708
+  - SRR3716709
+  - SRR3716710
+  - SRR3716711
+  - SRR3716712
+  - SRR3716713
+  - SRR3725050
+  - SRR3725051
+  - SRR3725052
+  - SRR3725053
+
+
+
+
+CHRS:
+  - Vu01
+  - Vu02
+  - Vu03
+  - Vu04
+  - Vu05
+  - Vu06
+  - Vu07
+  - Vu08
+  - Vu09
+  - Vu10
+  - Vu11
+

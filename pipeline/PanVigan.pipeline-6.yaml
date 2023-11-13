@@ -1,0 +1,71 @@
+PIPE_DIR: /home/wuzhikun/github/PanSV/pipeline
+SCRIPT_DIR: /home/wuzhikun/github/PanSV/script
+RULE_DIR: /home/wuzhikun/github/PanSV/rule
+#SRC_DIR: /home/wuzhikun/github/PanSV/src
+
+project_path: /home/wuzhikun/Project/PanSV
+THREADS: 8
+ThreadFold: 1
+Memory: "-Xmx30g"
+
+
+
+### quality control
+length_required: 60
+qualified_quality_phred: 15
+unqualified_percent_limit: 30
+cut_window_size: 1
+cut_mean_quality: 20
+
+
+# ### NanoFilt
+# readtype: "1D"
+# minQuality: 7
+# minLength: 500
+# headcrop: 20
+# tailcrop: 15
+
+
+### windows
+window: 500000
+sliding: 100000
+
+### ReadDepthWinPlot
+width: 5
+height: 8
+maxDepth: 40
+
+picard: /home/wuzhikun/anaconda3/envs/WGS/bin/picard.jar
+GATK3: /home/wuzhikun/anaconda3/envs/WGS/bin/GenomeAnalysisTK.jar
+GATK4: /home/wuzhikun/software/gatk-4.0.6.0/gatk-package-4.0.6.0-local.jar
+pilon: /home/wuzhikun/anaconda3/envs/Assembly3/pilon-1.23.jar
+#RefGenome: /home/wuzhikun/Project/PanSV/BACKUP/Assembly/Fengchan6/Vigna_unguiculata_assembly.fasta
+RefGenome: /home/wuzhikun/database/genome/Vigna_unguiculata/G98/Lachesis_assembly_changed.fa
+
+
+
+
+
+SAMPLES:
+  - E829
+  - E830
+  - E831
+  - E832
+  - E833
+  - E834
+
+
+
+CHRS:
+  - Vu01
+  - Vu02
+  - Vu03
+  - Vu04
+  - Vu05
+  - Vu06
+  - Vu07
+  - Vu08
+  - Vu09
+  - Vu10
+  - Vu11
+
