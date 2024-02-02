@@ -12,19 +12,22 @@ cd pangene && make
 
 ### parameters
 
+
 ```
-$ /home/wuzhikun/software/pangene/pangene 
+$ /home/wuzhikun/software/pangene-1.0/pangene --help
 Usage: pangene [options] <in.paf> [...]
 Options:
   Input preprocessing:
     -d CHAR       gene-protein delimiter [:]
     -X STR/@FILE  exclude genes in STR list or in @FILE []
-    -I STR/@FILE  attempt to include genes in the output graph []
+    -I STR/@FILE  include genes in the output graph []
+    -P STR/@FILE  prioritize genes in the output graph []
     -e FLOAT      drop an alignment if its identity <FLOAT [0.5]
     -l FLOAT      drop an alignment if <FLOAT fraction of the protein aligned [0.5]
     -m FLOAT      score adjustment coefficient [2]
   Graph construction:
     -f FLOAT      min overlap fraction [0.5]
+    -J            skip joint pseudogene filtering
     -p FLOAT      gene considered if dominant in FLOAT fraction of genes [0.05]
     -c INT        drop a gene if average occurrence is >INT [10]
     -g INT        drop a gene if its in- or out-degree >INT [15]
@@ -39,8 +42,8 @@ Options:
     -w            Suppress walk lines (W-lines)
     --bed[=STR]   output 12-column BED where STR is walk, raw or flag [walk]
     --version     print version number
-
 ```
+
 
 
 
