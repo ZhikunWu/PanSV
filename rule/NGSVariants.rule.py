@@ -38,7 +38,7 @@ rule SAM2BAM:
         sam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sam',
     output:
         tempbam = temp(IN_PATH + '/NGS/mapping/{sample}/{sample}_temp.bam'),
-        bam = temp(IN_PATH + '/NGS/mapping/{sample}/{sample}_align.bam'),
+        bam = IN_PATH + '/NGS/mapping/{sample}/{sample}_align.bam',
     threads:
         THREADS
     log:
@@ -89,7 +89,7 @@ rule HaplotypeCallerWhole:
     input:
         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
     output:
-        vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf',
+        vcf = temp(IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.g.vcf'),
         # idx = IN_PATH + '/VCF/{sample}_{Chr}.gvcf.idx',
     params:
         GATK4 = config['GATK4'],
@@ -122,7 +122,81 @@ rule Wholebgzip:
         shell("bgzip {input.vcf}")
         shell("tabix -p vcf {output.vcf}")
 
-#################################################################
+# #################################################################
+
+
+
+
+############################# call each #####################
+
+# rule callChrom:
+#     input:
+#         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
+#     output:
+#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS_{Chr}.g.vcf',
+#     params:
+#         GATK4 = config['GATK4'],
+#         REF = config['RefGenome'],
+#         tmpDir = IN_PATH + '/NGS/VCF/TempDir',
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/{sample}_{Chr}.HaplotypeCaller.log",
+#     run:
+#         shell('gatk HaplotypeCaller -R {params.REF}  -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads} -L {wildcards.Chr} --tmp-dir {params.tmpDir} >{log} 2>&1') 
+
+
+# rule callContig:
+#     input:
+#         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
+#     output:
+#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.Contig.g.vcf',
+#     params:
+#         GATK4 = config['GATK4'],
+#         REF = config['RefGenome'],
+#         tmpDir = IN_PATH + '/NGS/VCF/TempDir',
+#         Contig = "/home/wuzhikun/database/genome/Vigna_unguiculata/G98/Lachesis_assembly_changed.contig.bed",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/{sample}_Contig.HaplotypeCaller.log",
+#     run:
+#         shell('gatk HaplotypeCaller -R {params.REF}  -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads} -L {params.Contig} --tmp-dir {params.tmpDir} >{log} 2>&1') 
+
+
+
+# def sample_target(files, target):
+#     Targets = []
+#     for f in files:
+#         if target in f:
+#             Targets.append(f)
+#     return sorted(Targets)
+
+
+# rule mergeCall:
+#     input:
+#         vcf = expand(IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS_{Chr}.g.vcf', sample=SAMPLES, Chr=CHRS),
+#         contig = expand(IN_PATH + '/NGS/VCF/{sample}/{sample}_NGS.Contig.g.vcf', sample=SAMPLES),
+#     output:
+#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_all_chrom.g.vcf',
+#     run:
+#         ChrCalls = sample_target(input.vcf, wildcards.sample + "_NGS")
+#         Contig = sample_target(input.contig, wildcards.sample + "_NGS.Contig.g.vcf")
+#         TargetVCF = ChrCalls + Contig
+#         print(TargetVCF)
+#         for t in range(len(TargetVCF)):
+#             file = TargetVCF[t]
+#             if t == 0:
+#                 cmd = "cat %s > %s" % (file, output.vcf)
+#             else:
+#                 cmd = "grep -v '^#' %s >> %s " % (file, output.vcf)
+#             os.system(cmd)
+
+# ##############################################################
+
+
+
+
 
 
 
@@ -252,61 +326,37 @@ rule Wholebgzip:
 
 
 
-######################################################################
-# rule HaplotypeCaller:
-#     input:
-#         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
-#     output:
-#         vcf = temp(IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf'),
-#         # idx = IN_PATH + '/VCF/{sample}_{Chr}.gvcf.idx',
-#     params:
-#         GATK4 = config['GATK4'],
-#         REF = config['RefGenome'],
-#     threads:
-#         THREADS
-#     log:
-#         IN_PATH + "/log/{sample}_{Chr}.HaplotypeCaller.log",
-#     run:
-#         ### -L 20:10,000,000-10,200,000
-#         ### -L hg38.exome.regions.bed
-#         ### --dbsnp dbSNP.vcf
-#         ### --variant_index_type LINEAR
-#         ### --variant_index_parameter 128000
-#         ##### -nt / --num_threads controls the number of data threads sent to the processor (acting at the machine level)
-#         ##### -nct / --num_cpu_threads_per_data_thread controls the number of CPU threads allocated to each data thread (acting at the core level)
-#         ###  -variant_index_type LINEAR -variant_index_parameter 128000 
-#         shell('java -Xmx10g -jar {params.GATK4} HaplotypeCaller -R {params.REF} -L {wildcards.Chr} -I {input.bam} -O {output.vcf} -ERC GVCF --native-pair-hmm-threads {threads}  >{log} 2>&1') 
-#         ### -gt_mode DISCOVERY -stand_call_conf 30  -stand_emit_conf 30
 
-
-
-# rule bgzip:
-#     input:
-#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf',
-#     output:
-#         vcf = IN_PATH + '/NGS/VCF/{sample}/{sample}_{Chr}.g.vcf.gz',
-#     run:
-#         shell("bgzip {input.vcf}")
-#         shell("tabix -p vcf {output.vcf}")
-
-
-##################################################
 
 
 
 ############# stats ####################
-rule BAMStats:
-    input:
-        bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
-    output:
-        stat = IN_PATH + '/NGS/mapping/{sample}/{sample}_bam_stats.xls',
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/BAMStats_{sample}.log"
-    run:
-        shell("samtools flagstat --threads {threads} {input.bam} > {output.stat} 2>{log}")
+# rule BAMStats:
+#     input:
+#         bam = IN_PATH + '/NGS/mapping/{sample}/{sample}.sorted.bam',
+#     output:
+#         stat = IN_PATH + '/NGS/mapping/{sample}/{sample}_bam_stats.xls',
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/BAMStats_{sample}.log"
+#     run:
+#         shell("samtools flagstat --threads {threads} {input.bam} > {output.stat} 2>{log}")
 
+
+rule BAMFlagSum:
+    input:
+        flag = expand(IN_PATH + '/NGS/mapping/{sample}/{sample}_bam_stats.xls', sample=SAMPLES),
+        # flag = expand(IN_PATH + '/NGS/mapping/BAMStats/{sample}_bam_stats.xls', sample=SAMPLES),
+    output:
+        summary = IN_PATH + "/QualityControl/NGS/Stats/S_Samples_mapping_flag_summary.xls",
+    params:
+        bamFlagSum = SCRIPT_DIR + "/bamFlagSum.py",
+    log:
+        IN_PATH + "/log/BAMFlagSum.log",
+    run:
+        FILES = ",".join(input.flag)
+        shell("python {params.bamFlagSum} --file {FILES} --out {output.summary} > {log} 2>&1")
 
 ########################################
 

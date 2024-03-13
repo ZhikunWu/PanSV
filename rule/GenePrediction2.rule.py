@@ -1,4 +1,4 @@
-'''
+
 ############################################################################
 # rule BuildDatabase:
 #     input:
@@ -132,7 +132,7 @@ rule hisatBAM:
 
 
 ##############################################################################
-'''
+
 
 rule BAMStats4:
     input:
@@ -150,6 +150,25 @@ rule BAMStats4:
 
 
 ####################### merge gtf ################
+rule TrinityGuideAssembly:
+    input:
+        bam = IN_PATH + "/GenePrediction/RNA/hisat/{sample}/ngs_RNA_hisat.bam",
+    output:
+        fa = IN_PATH + "/GenePrediction/RNA/Trinity/guideAssembly/{sample}/trinity_out_dir/Trinity-GG.fasta",
+    params:
+        outDir = IN_PATH + "/GenePrediction/RNA/Trinity/guideAssembly/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/TrinityGuideAssembly_{sample}.log",
+    run:
+        ### Trinity --genome_guided_bam /home/wuzhikun/Project/Vigna/RNA/NGS/mapping/hisat/all_ngs_RNA_hisat_sort.bam   --genome_guided_max_intron 10000 --max_memory 100G --CPU 20 > /home/wuzhikun/Project/Vigna/log/TrinityGuideAssembly.log 2>&1
+        if not os.path.exists(params.outDir):
+            os.makedirs(params.outDir)
+        shell("cd {params.outDir} && Trinity --genome_guided_bam {input.bam} --genome_guided_max_intron 10000 --max_memory 50G --CPU {threads} > {log} 2>&1")
+
+
+
 rule stringtie:
     input:
         bam = IN_PATH + "/GenePrediction/RNA/hisat/{sample}/ngs_RNA_hisat.bam",
@@ -195,6 +214,18 @@ rule cufflinks:
         os.system(cmd)
 
 
+rule gtf2fasta1:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        gtf = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.gtf",
+    output:
+        fasta = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.fasta",
+    run:
+        shell("gffread {input.gtf} -g {input.assembly} -w {output.fasta}")
+
+
+
+
 rule scallop:
     input:
         bam = IN_PATH + "/GenePrediction/RNA/hisat/{sample}/ngs_RNA_hisat.bam",
@@ -206,6 +237,18 @@ rule scallop:
         IN_PATH + "/log/scallop_{sample}.log",
     run:
         shell("scallop -i {input.bam} -o {output.gtf} > {log} 2>&1")
+
+
+
+rule gtf2fasta2:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        gtf = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.gtf",
+    output:
+        fasta = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.fasta",
+    run:
+        shell("gffread {input.gtf} -g {input.assembly} -w {output.fasta}")
+
 
 
 
@@ -232,6 +275,17 @@ rule cuffmerge:
         cmd = "source activate Assembly &&  cuffmerge -s %s -p %s -o %s  %s > %s 2>&1" % (input.assembly, threads, params.outDir, output.transList, log)
         print(cmd)
         os.system(cmd)
+
+
+rule gtf2fasta:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        gtf = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/merged.gtf",
+    output:
+        fasta = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/merged.fasta",
+    run:
+        shell("gffread {input.gtf} -g {input.assembly} -w {output.fasta}")
+
 
 #########################################################
 
@@ -264,8 +318,9 @@ rule TrinityAssembly:
 ######################## non-redundant transcripts #######
 rule TansMerge:
     input:
-        fa1 = rules.TrinityAssembly.output.fasta,
-        fa2 = rules.stringtieFasta.output.fasta,
+        fa1 = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie_exon.fasta",
+        fa2 = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.fasta",
+        fa3 = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.fasta",
     output:
         merge = IN_PATH + "/GenePrediction/RNA/TransMerge/{sample}/merged_transcript.fasta",
         fasta = IN_PATH + "/GenePrediction/RNA/TransMerge/{sample}/nonreduandant_transcript.fasta",
@@ -274,12 +329,24 @@ rule TansMerge:
     log:
         IN_PATH + "/log/TransMerge_{sample}.log",
     run:
-        shell("cat {input.fa1} {input.fa2} > {output.merge}")
+        shell("cat {input.fa1} {input.fa2} {input.fa3} > {output.merge}")
         shell("cd-hit-est -i {output.merge} -o {output.fasta} -c 0.95 -aS 0.95 -d 0 >{log} 2>&1")
 
 
 ###########################################################
 
+
+rule homo:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    output:
+        homo = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align.gff",
+    params:
+        protein = "/home/wuzhikun/data/Vigna/Protein/Faba_10genome_protein_cdhit_0.8",
+    threads:
+        THREADS
+    run:
+        shell("miniprot -t {threads}  --gff {input.assembly}  {params.protein} > {output.homo}")
 
 
 

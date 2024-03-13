@@ -2,7 +2,7 @@
 
 
 
-############### Evaluation #############
+# ############### Evaluation #############
 
 # rule ONTAlign:
 #     input:
@@ -22,40 +22,40 @@
 
 
 
-# rule ONTCov:
-#     input:
-#         bam = rules.ONTAlign.output.bam,
-#     output:
-#         bw = IN_PATH + "/Evaluation/Coverage/{sample}/{sample}_ONT_WGS.bw",
-#     log:
-#         IN_PATH + "/log/ONTCov_{sample}.log"
-#     run:
-#         shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+# # rule ONTCov:
+# #     input:
+# #         bam = rules.ONTAlign.output.bam,
+# #     output:
+# #         bw = IN_PATH + "/Evaluation/Coverage/{sample}/{sample}_ONT_WGS.bw",
+# #     log:
+# #         IN_PATH + "/log/ONTCov_{sample}.log"
+# #     run:
+# #         shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
 
 
-# rule ONTDepth:
-#     input:
-#         bam = rules.ONTAlign.output.bam,
-#     output:
-#         depth = IN_PATH +  "/Evaluation/Coverage/{sample}/{sample}_ONT.per-base.bed.gz",
-#     threads:
-#         THREADS
-#     params:
-#         outPrefix = IN_PATH + '/Evaluation/Coverage/{sample}/{sample}_ONT',
-#     log:
-#         IN_PATH + "/log/ONTDepth_{sample}.log"
-#     run:
-#         # shell('mosdepth --threads {threads} --fast-mode --flag 256  {params.outPrefix} {input.bam} > {log} 2>&1')
-#         cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
-#         print(cmd)
-#         os.system(cmd)
+# # rule ONTDepth:
+# #     input:
+# #         bam = rules.ONTAlign.output.bam,
+# #     output:
+# #         depth = IN_PATH +  "/Evaluation/Coverage/{sample}/{sample}_ONT.per-base.bed.gz",
+# #     threads:
+# #         THREADS
+# #     params:
+# #         outPrefix = IN_PATH + '/Evaluation/Coverage/{sample}/{sample}_ONT',
+# #     log:
+# #         IN_PATH + "/log/ONTDepth_{sample}.log"
+# #     run:
+# #         # shell('mosdepth --threads {threads} --fast-mode --flag 256  {params.outPrefix} {input.bam} > {log} 2>&1')
+# #         cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
+# #         print(cmd)
+# #         os.system(cmd)
 
-########################################################
-
-
+# ########################################################
 
 
-######################### SV ###########################
+
+
+# ######################### SV ###########################
 rule ONTAlignRef:
     input:
         fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
@@ -71,30 +71,31 @@ rule ONTAlignRef:
         shell("minimap2 --MD -a -x map-ont -t {threads} {input.assembly} {input.fastq} > {output.sam} 2>{log}")
         shell("samtools view -@ {threads} -b {output.sam} | samtools sort -  -@ {threads} -o {output.bam} > {log} 2>&1")
         shell("samtools index {output.bam}")
+        
 
-rule BAMStats2:
-    input:
-        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
-    output:
-        stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_bam_stats.xls',
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/BAMStats2_{sample}.log"
-    run:
-        shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
+# rule BAMStats2:
+#     input:
+#         bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+#     output:
+#         stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_bam_stats.xls',
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/BAMStats2_{sample}.log"
+#     run:
+#         shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
 
-rule BAMStats3:
-    input:
-        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
-    output:
-        stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_flag_stats.xls',
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/BAMStats3_{sample}.log"
-    run:
-        shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
+# rule BAMStats3:
+#     input:
+#         bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+#     output:
+#         stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_flag_stats.xls',
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/BAMStats3_{sample}.log"
+#     run:
+#         shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
 
 
 
@@ -153,11 +154,56 @@ rule cuteSV1:
         cmd = "source activate nanovar && cuteSV --max_cluster_bias_INS 100   --diff_ratio_merging_INS 0.3 --max_cluster_bias_DEL 100 --diff_ratio_merging_DEL 0.3 --threads %s --sample  %s --report_readid --min_support 5  --min_size 50 --min_siglength 50  --max_size -1 --genotype %s  %s %s %s > %s  2>&1" % (threads, wildcards.sample, input.bam, params.RefGenome, output.vcf, params.tempDir, log)
         print(cmd)
         os.system(cmd)
-##########################################################
 
 
 
-##########################################################
+rule nanovar:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        total = IN_PATH + "/SVCall/nanovar/{sample}/{sample}.nanovar.total.vcf",
+        vcf = IN_PATH + "/SVCall/nanovar/{sample}/{sample}.nanovar.pass.vcf",
+    threads:
+        THREADS
+    params:
+        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+        outdir = IN_PATH + "/SVCall/nanovar/{sample}",
+    log:
+        IN_PATH + "/log/nanovar_{sample}.log"
+    run:
+        ### nanovar: /home/litong/anaconda3/envs/nanovar/bin/nanovar
+        ### --data_type ont, pacbio-clr, pacbio-ccs
+        # shell("nanovar -r {params.RefGenome} -l {input.fastq} -t {threads} -o {params.outdir} >{log} 2>&1")
+        # cmd = "source activate NanoVar && nanovar -t %s --data_type ont --mincov 2 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, params.RefGenome, params.outdir, log)
+        cmd = "source activate nanovar && nanovar -t %s --data_type ont --mincov 5 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, params.RefGenome, params.outdir, log)
+        print(cmd)
+        os.system(cmd)
+
+# ##########################################################
+
+
+rule SVIM:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        vcf = IN_PATH + "/SVCall/SVIM/{sample}/variants.vcf",
+    params:
+        RefGenome =  "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+        min_length = 50,
+        minmapping_qual = 20,
+        outdir = IN_PATH + "/SVCall/SVIM/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/SVIM_{sample}.log"
+    run:
+        # shell("svim alignment --min_sv_size {params.min_length} --min_mapq {params.minmapping_qual} --sample {wildcards.sample} --insertion_sequences  {params.outdir} {input.bam} {params.RefGenome} >{log} 2>&1")
+        cmd = "source activate NanoSV && svim alignment --min_sv_size 50 --min_mapq 20 --sample %s --insertion_sequences  %s %s  %s > %s 2>&1" % (wildcards.sample, params.outdir, input.bam, params.RefGenome, log)
+        print(cmd)
+        os.system(cmd)
+
+
+# ##########################################################
 rule snf:
     input:
         bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
@@ -168,7 +214,7 @@ rule snf:
         THREADS
     params:
         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
-        annotation = "/home/wuzhikun/Project/PanVigna/Vigna_SRF/Vigna_satellite_assembly_aln_3column.bed",
+        annotation = "/home/wuzhikun/Project/PanSV/Vigna_SRF/Vigna_satellite_assembly_aln_3column.bed",
     log:
         IN_PATH + "/log/snf_{sample}.log"
     run:
@@ -177,149 +223,154 @@ rule snf:
 
 
 
-rule MergeVCF:
-    input:
-        snf = expand(IN_PATH + "/SVCall/Sniffles2/snf/{sample}.snf", sample=SAMPLES),
-    output:
-        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge.vcf",
-    threads:
-        THREADS
-    params:
-        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
-        annotation = "/home/wuzhikun/Project/PanVigna/Vigna_SRF/Vigna_satellite_assembly_aln_3column.bed",
-    log:
-        IN_PATH + "/log/MergeVCF.log"
-    run:
-        ### --tandem-repeats {params.annotation}
-        Samples = " ".join(sorted(input.snf))
-        shell("~/anaconda3/envs/sniffles2/bin/sniffles --input {Samples} --vcf {output.vcf} --threads {threads}  --reference {params.RefGenome} --tandem-repeats {params.annotation} --minsupport 5 --minsvlen 50  --long-ins-length 50000 > {log} 2>&1")
-
-
-rule VCFFilt:
-    input:
-        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge.vcf",
-    output:
-        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
-    params:
-        MergeVCFFilt = SCRIPT_DIR + "/MergeVCFFilt.py",
-        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt_out.vcf",
-    run:
-        shell("python {params.MergeVCFFilt} --vcf {input.vcf} --out {output.vcf} > {params.vcf}")
-
-
-
-rule VCF2vgFormat:
-    input:
-        vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
-    output:
-        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
-    params:
-        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
-        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
-        VCF2vgFormat = SCRIPT_DIR + "/VCF2vgFormat.py",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/VCF2vgFormat.log"
-    run:
-        shell("python {params.VCF2vgFormat} --vcf {input.vcf} --out {params.vcf} --fasta {params.RefGenome} > {log} 2>&1")
-        shell("bgzip {params.vcf}")
-        shell("tabix -p vcf {output.vcf}")
-#################################################################
-
-
-############## Extract #################
-rule extract:
-    input:
-        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
-    output:
-        vcf = IN_PATH + "/SVCall/PanGraph/Extract/{sample}_SV_extract.vcf",
-    params:
-        PanSVExtract = SCRIPT_DIR + "/PanSVExtract.py",
-    run:
-        shell("python {params.PanSVExtract} --vcf {input.vcf} --out {output.vcf} --sample {wildcards.sample}")
-        
-######################################
-
-
-
-
-# rule simpleVG:
+# rule MergeVCF:
 #     input:
-#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+#         snf = expand(IN_PATH + "/SVCall/Sniffles2/snf/{sample}.snf", sample=SAMPLES),
 #     output:
-#         vg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_construct.vg",
+#         vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge.vcf",
 #     threads:
 #         THREADS
 #     params:
 #         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+#         annotation = "/home/wuzhikun/Project/PanVigna/Vigna_SRF/Vigna_satellite_assembly_aln_3column.bed",
 #     log:
-#         IN_PATH + "/log/simpleVG.log"
+#         IN_PATH + "/log/MergeVCF.log"
 #     run:
-#         shell("vg construct -p  --threads {threads}  -r  {params.RefGenome} -v {input.vcf} > {output.vg} 2>> {log}")
+#         ### --tandem-repeats {params.annotation}
+#         Samples = " ".join(sorted(input.snf))
+#         shell("~/anaconda3/envs/sniffles2/bin/sniffles --input {Samples} --vcf {output.vcf} --threads {threads}  --reference {params.RefGenome} --tandem-repeats {params.annotation} --minsupport 5 --minsvlen 50  --long-ins-length 50000 > {log} 2>&1")
+
+
+# rule VCFFilt:
+#     input:
+#         vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge.vcf",
+#     output:
+#         vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
+#     params:
+#         MergeVCFFilt = SCRIPT_DIR + "/MergeVCFFilt.py",
+#         vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt_out.vcf",
+#     run:
+#         shell("python {params.MergeVCFFilt} --vcf {input.vcf} --out {output.vcf} > {params.vcf}")
 
 
 
-############################### giraffe ########################
-rule GiraffeIndex:
-    input:
-        vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
-    output:
-        dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
-        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
-        m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
-    params:
-        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
-        outPrefix = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe",
-    log:
-        IN_PATH + "/log/GiraffeIndex.log"
-    run:
-        shell("/home/wuzhikun/software/vg autoindex --workflow giraffe -r {params.RefGenome} -v {input.vcf} -p {params.outPrefix} > {log} 2>&1")
+# rule VCF2vgFormat:
+#     input:
+#         vcf = IN_PATH + "/SVCall/Sniffles2/Samples_SV_merge_filt.vcf",
+#     output:
+#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+#     params:
+#         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
+#         VCF2vgFormat = SCRIPT_DIR + "/VCF2vgFormat.py",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/VCF2vgFormat.log"
+#     run:
+#         shell("python {params.VCF2vgFormat} --vcf {input.vcf} --out {params.vcf} --fasta {params.RefGenome} > {log} 2>&1")
+#         shell("bgzip {params.vcf}")
+#         shell("tabix -p vcf {output.vcf}")
+# #################################################################
 
 
-rule vgConvert:
-    input:
-        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
-    output:
-        xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
-    run:
-        shell("/home/wuzhikun/software/vg convert -x {input.gbz}  > {output.xg}")
+# ############## Extract #################
+# rule extract:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf",
+#     output:
+#         vcf = IN_PATH + "/SVCall/PanGraph/Extract/{sample}_SV_extract.vcf",
+#     params:
+#         PanSVExtract = SCRIPT_DIR + "/PanSVExtract.py",
+#     run:
+#         shell("python {params.PanSVExtract} --vcf {input.vcf} --out {output.vcf} --sample {wildcards.sample}")
+        
+# ######################################
 
 
-rule snarls:
-    input:
-        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
-    output:
-        snarls = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.snarls.pb",
-    threads:
-        THREADS
-    run:
-        shell("/home/wuzhikun/software/vg snarls -t {threads} {input.gbz} > {output.snarls}")
 
 
-rule Giraffe:
-    input:
-        dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
-        gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
-        m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
-        xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
-        R1 = "/home/wuzhikun/Project/PanVigna/clean/{sample}_NGS.R1.fastq.gz",
-        R2 = "/home/wuzhikun/Project/PanVigna/clean/{sample}_NGS.R2.fastq.gz",
-    output:
-        gam = IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam",
-    threads:
-        THREADS
-    log:
-        IN_PATH + "/log/Giraffe_{sample}.log"
-    run:
-        shell("/home/wuzhikun/software/vg giraffe --gbz-name {input.gbz} --dist-name {input.dist} --minimizer-name {input.m} --xg-name {input.xg} --fastq-in {input.R1} --fastq-in {input.R2}   --threads {threads} --sample {wildcards.sample}  -o gam  >  {output.gam} 2>{log}")
+# # rule simpleVG:
+# #     input:
+# #         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+# #     output:
+# #         vg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_construct.vg",
+# #     threads:
+# #         THREADS
+# #     params:
+# #         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+# #     log:
+# #         IN_PATH + "/log/simpleVG.log"
+# #     run:
+# #         shell("vg construct -p  --threads {threads}  -r  {params.RefGenome} -v {input.vcf} > {output.vg} 2>> {log}")
+
+
+
+# ############################### giraffe ########################
+# rule GiraffeIndex:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_vgformat.vcf.gz",
+#     output:
+#         dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
+#         gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+#         m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
+#     params:
+#         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+#         outPrefix = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe",
+#     log:
+#         IN_PATH + "/log/GiraffeIndex.log"
+#     run:
+#         shell("/home/wuzhikun/software/vg autoindex --workflow giraffe -r {params.RefGenome} -v {input.vcf} -p {params.outPrefix} > {log} 2>&1")
+
+
+# rule vgConvert:
+#     input:
+#         gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+#     output:
+#         xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
+#     run:
+#         shell("/home/wuzhikun/software/vg convert -x {input.gbz}  > {output.xg}")
+
+
+# rule snarls:
+#     input:
+#         gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+#     output:
+#         snarls = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.snarls.pb",
+#     threads:
+#         THREADS
+#     run:
+#         shell("/home/wuzhikun/software/vg snarls -t {threads} {input.gbz} > {output.snarls}")
+
+#############################################################
+
+
+
+###################### call SV ###############################
+
+# rule Giraffe:
+#     input:
+#         dist = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.dist",
+#         gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
+#         m = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.min",
+#         xg = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.xg",
+#         R1 = IN_PATH + "/clean/{sample}_NGS.R1.fastq.gz",
+#         R2 = IN_PATH + "/clean/{sample}_NGS.R2.fastq.gz",
+#     output:
+#         gam = IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/Giraffe_{sample}.log"
+#     run:
+#         shell("vg giraffe --gbz-name {input.gbz} --dist-name {input.dist} --minimizer-name {input.m} --xg-name {input.xg} --fastq-in {input.R1} --fastq-in {input.R2}   --threads {threads} --sample {wildcards.sample}  -o gam  >  {output.gam} 2>{log}")
 
 
 
 rule pack:
     input:
         gbz = IN_PATH + "/SVCall/PanGraph/Samples_SV_merge_giraffe.giraffe.gbz",
-        gam = temp(IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam"),
+        gam = IN_PATH + "/SVCall/NGS/{sample}.giraffe.gam",
     output:
         pack = IN_PATH + "/SVCall/NGS/{sample}.giraffe.pack",
     threads:
@@ -358,21 +409,249 @@ rule call:
         shell("tabix -p vcf {output.vcf}")
 
 
-rule CallFilt:
+
+# # rule CallFilt:
+# #     input:
+# #         vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf.gz",
+# #     output:
+# #         vcf0 = temp(IN_PATH + "/SVCall/NGS/{sample}.giraffe.temp.vcf"),
+# #         vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.filt.vcf",
+# #     params:
+# #         NGSgiraffeFilt = SCRIPT_DIR + "/NGSgiraffeFilt.py",
+# #     threads:
+# #         THREADS
+# #     log:
+# #         IN_PATH + "/log/CallFilt_{sample}.log"
+# #     run:
+# #         shell("pigz -p {threads} -dc {input.vcf} > {output.vcf0}")
+# #         shell("python {params.NGSgiraffeFilt} --vcf {output.vcf0} --out {output.vcf} --altThreshold 10 > {log} 2>&1")
+
+
+
+# rule PanSV:
+#     input:
+#         vcf = expand(IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf.gz", sample=SAMPLES),
+#     output:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.giraffe.sv.vcf.gz",
+#     threads:
+#         THREADS
+#     log:
+#         IN_PATH + "/log/PanSV.log"
+#     run:
+#         Files = " ".join(sorted(input.vcf))
+#         shell("bcftools merge --threads {threads} -Oz -o {output.vcf} {Files} > {log} 2>&1")
+
+
+# rule TwoAllele:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.giraffe.sv.vcf.gz",   
+#     output:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.giraffe.sv.vcf",
+#         recode = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.recode.vcf",
+#         gt = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.GT.vcf",
+#     params:
+#         outPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel",
+#     log:
+#         IN_PATH + "/log/TwoAllele.log",
+#     run:
+#         shell("pigz -dc {input.vcf} > {output.vcf}")
+#         shell("vcftools --vcf {output.vcf} --min-alleles 2 --max-alleles 2   --max-missing 0.2 --out {params.outPrefix} --recode > {log} 2>&1")
+#         shell("bcftools annotate -x ^FORMAT/GT {output.recode} > {output.gt}")
+        
+
+
+
+# rule SVMAFAllele:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.GT.vcf",  
+#     output:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.recode.vcf",
+#     params:
+#         outPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005",
+#     log:
+#         IN_PATH + "/log/SVMAFAllele.log",
+#     run:
+#         shell("vcftools --vcf {input.vcf}  --maf 0.05 --out {params.outPrefix} --recode > {log} 2>&1")
+
+
+
+# rule SVConvertPed:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.recode.vcf",
+#     output:
+#         Ped = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.ped",
+#         Map = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.map",
+#     params:
+#         outPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005",
+#     log:
+#         IN_PATH + "/log/SVConvertPed.log",
+#     run:
+#         shell("vcftools --vcf {input.vcf} --plink --out {params.outPrefix} > {log} 2>&1")
+
+
+# def map_id(vcf_file, map_file, out_file):
+#     IDRegion = {}
+#     in_h = open(vcf_file, "r")
+#     for line in in_h:
+#         line = line.strip()
+#         if line.startswith("#"):
+#             continue
+#         else:
+#             lines = line.split("\t")
+#             Chr, Pos, Id = lines[:3]
+#             IDRegion[Id] = (Chr, Pos)
+#     in_h.close()
+#     map_h = open(map_file, "r")
+#     out_h = open(out_file, "w")
+#     for line in map_h:
+#         lines = line.strip().split("\t")
+#         mapid = lines[1]
+#         region = IDRegion[mapid]
+#         c, p = region
+#         newline = "%s\t%s:%s\t0\t%s" % (c, c, p, p) 
+#         out_h.write("%s\n" % newline)
+#     map_h.close()
+#     out_h.close()
+
+
+# rule updateMap:
+#     input:
+#         vcf = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.recode.vcf",
+#         Map = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.map",
+#     output:
+#         Map = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005-1.map",
+#     run:
+#         map_id(input.vcf, input.Map, output.Map)
+#         # shell("cp {output.Map} {input.Map}")
+
+
+# rule SVmakebed:
+#     input:
+#         Map0 = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005-1.map",
+#         Ped = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.ped",
+#         Map = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.map",
+#     output:
+#         bed = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.bed",
+#         fam = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.fam",
+#     params:
+#         outPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005",
+#     log:
+#         IN_PATH + "/log/SVmakebed.log",
+#     run:
+#         shell("plink --file {params.outPrefix} --make-bed --out {params.outPrefix} --allow-extra-chr  > {log} 2>&1")
+
+rule modifySVfam:
     input:
-        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.vcf.gz",
+        fam = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.fam",
     output:
-        vcf0 = temp(IN_PATH + "/SVCall/NGS/{sample}.giraffe.temp.vcf"),
-        vcf = IN_PATH + "/SVCall/NGS/{sample}.giraffe.filt.vcf",
+        fam = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005-1.fam",
+    run:
+        cmd = """awk '{print $1" "$2" "$3" "$4" "$5" "1}' %s > %s """ % (input.fam, output.fam)
+        os.system(cmd)
+        shell("cp {output.fam} {input.fam}")
+
+
+
+rule kinship:
+    input:
+        bed = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.bed",
+        fam = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005-1.fam",
+    output:
+        ks = IN_PATH + "/SVCall/PanSV/GWASGemma/output/geno_kS.cXX.txt",
     params:
-        NGSgiraffeFilt = SCRIPT_DIR + "/NGSgiraffeFilt.py",
+        inPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005",
+        outDir = IN_PATH + "/SVCall/PanSV/GWASGemma",
+        outPrefix = "geno_kS",
+    log:
+        IN_PATH + "/log/kinship.log", 
+    run:
+        if not os.path.exists(params.outDir):
+            os.makedirs(params.outDir)
+        # cmd = "source activate WGS && cd %s && gemma -bfile %s -gk 1 -o %s > %s 2>&1" % (params.outDir, params.inPrefix, params.outPrefix, log)
+        # print(cmd)
+        # os.system(cmd)
+        shell("cd {params.outDir} && gemma -bfile {params.inPrefix} -gk 1 -o {params.outPrefix} > {log} 2>&1")
+
+
+
+
+rule SVassociation:
+    input:
+        bed = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005.bed",
+        ks = IN_PATH + "/SVCall/PanSV/GWASGemma/output/geno_kS.cXX.txt",
+        pheno1 = IN_PATH + "/SVCall/PanSV/phenotype/{trait}.txt",
+        # pheno1 = IN_PATH + "/NGS/phenotype/Glucose_pheno.txt",
+        # pheno2 = IN_PATH + "/NGS/phenotype/Levulose_pheno.txt",
+        # pheno3 = IN_PATH + "/NGS/phenotype/Sucrose_pheno.txt",
+    output:
+        asso1 = IN_PATH + "/SVCall/PanSV/GWASGemma/output/{trait}.assoc.txt",
     threads:
         THREADS
+    params:
+        inPrefix = IN_PATH + "/SVCall/PanSV/Dsamples.twoallel.maf005",
+        outDir = IN_PATH + "/SVCall/PanSV/GWASGemma",
     log:
-        IN_PATH + "/log/CallFilt_{sample}.log"
+        IN_PATH + "/log/SVassociation_{trait}.log", 
     run:
-        shell("pigz -p {threads} -dc {input.vcf} > {output.vcf0}")
-        shell("python {params.NGSgiraffeFilt} --vcf {output.vcf0} --out {output.vcf} --altThreshold 10 > {log} 2>&1")
+        ### gemma -bfile /home/wuzhikun/Project/Population/population/plink/Sample_SV_geno -k /home/wuzhikun/Project/Population/population/GWAS/output/SV_geno_kS.cXX.txt -lmm 1 -o pheno1 -p /home/wuzhikun/Project/Population/phenotype/CN329_phenotype_value-1.txt
+        # shell("cut -f {wildcards.trait} {input.pheno} > {output.pheno}")
+        shell("cd {params.outDir} && gemma -bfile {params.inPrefix} -k {input.ks} -lmm 1 -o {wildcards.trait} -p {input.pheno1} > {log} 2>&1")
+
+
+
+
+def changeChrString(in_file, out_file):
+    in_h = open(in_file, "r")
+    out_h = open(out_file, "w")
+    header = in_h.readline().strip()
+    out_h.write("%s\n" % header)
+    for line in in_h:
+        lines = line.strip().split("\t")
+        Chr = lines[1].strip("Vu").lstrip("0")
+        out_h.write("%s\t%s\t%s\t%s\n" % (lines[0], Chr, lines[2], lines[3]))
+    in_h.close()
+    out_h.close()
+
+
+rule SVManhattanPlot0:
+    input:
+        assoc = IN_PATH + "/SVCall/PanSV/GWASGemma/output/{trait}.assoc.txt",
+    output:
+        assoc = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc.txt",
+        assoc1 = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc-1.txt",
+    run:
+        shell("echo 'SNP CHR BP P' | sed 's/ /\t/g'   > {output.assoc}")
+        cmd = """sed '1d' %s | grep -v "_un" | awk '{print $2"\t"$1"\t"$3"\t"$12}' >> %s"""  % (input.assoc, output.assoc)
+        print(cmd)
+        os.system(cmd)
+        changeChrString(output.assoc, output.assoc1)
+
+
+
+rule ManhattanPlot1:
+    input:
+        assoc = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc-1.txt",
+    output:
+        manhattan = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc_mahattan_SV.jpeg",
+        qq = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc_qq_SV.jpeg",
+    params:
+        GWASPlot = SCRIPT_DIR + "/GWASPlot.R",
+    log:
+        IN_PATH + "/log/SVManhattanPlot_{trait}.log", 
+    run:
+        shell("Rscript {params.GWASPlot} --input {input.assoc} --manhattan {output.manhattan} --qq {output.qq} > {log} 2>&1")
+
+
+rule SVSigLoci:
+    input:
+        asso = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc-1.txt",
+    output:
+        sig = IN_PATH + "/SVCall/PanSV/GWASGemma/output/plot/{trait}.assoc_sig.txt",
+    run:
+        cmd = "awk '{if ($4 < 2.9e-5){print $0}}'  %s > %s" % (input.asso, output.sig)
+        print(cmd)
+        os.system(cmd)
+
 
 ##############################################################
 
