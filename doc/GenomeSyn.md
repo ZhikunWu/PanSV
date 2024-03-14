@@ -37,3 +37,18 @@ nucmer -c 400 -l 150 -t 20  -p A1472Fengchan  ~/Project/Vigna/Final/Vigna_unguic
 
 ```
 
+
+
+
+```
+nucmer -c 400 -l 150 -t 20 -p Bo_align /home/wuzhikun/PublicData/Brassica_oleracea/GCA_034621495.1_ASM3462149v1_genomic.fna.split/GCA_034621495.1_chromosome.fasta /home/wuzhikun/Project/BAssembly/Assembly/NextDenovo50k/03.ctg_graph/ragtag/ragtag.scaffold.fasta.split/NextDenovo50k_chr.fasta
+
+show-coords -r -c -l -T  Bo_align.delta  > Bo_align.coords
+
+export PERL5LIB=/home/wuzhikun/anaconda3/envs/TE3/lib
+
+(TE3) wuzhikun@mu02 10:17:17 ^_^ /home/wuzhikun/Project/BAssembly/pipeline/GenomeSyn 
+$ /home/wuzhikun/software/GenomeSyn-main/GenomeSyn-1.2.7/bin/GenomeSyn  -t 3 -g1 GCA_034621495.1_chromosome.fasta -g2 NextDenovo50k_chr.fasta -cf1 Bo_align.coords
+
+```
+
