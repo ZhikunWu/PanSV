@@ -44,3 +44,42 @@ OrthoFinder version 2.4.0 [ 40 ] was used to identify orthologous groups in A. t
 ### Genome synteny analysis 
 MCscanX [ 47 ] was used to analyze the colinearity within the V. reflexo-pilosa genome and between V. reflexo-pilosa–G. max , V. reflexo-pilosa–P. vulgaris , V. reflexo-pilosa–V. hirtella , V. reflexo-pilosa– V . mungo , V . reflexo-pilosa–V . radiata , V . reflexo-pilosa–V . trinervia , and V . reflexo-pilosa–V . unguiculata genomes. V . reflexo-pilosa amino acid sequences were aligned against themselves , G . max , P. vulgaris , V . hirtella , V . mungo , V . radiata , V . trinervia , or V . unguiculata using BLASTP (with an e-value cutoff of 10 −10 ) in order to identify putativ e par alogs. Intr a genic homeologous bloc ks wer e defined as regions of ten or more genes with colinear or nearly colinear runs of paralogs elsewhere in the genome with fewer than six intervening genes . T hese intragenic homeologous blocks were visualized using CIRCOS version 0.69.8 [ 48 ]. Similarly, we also performed pairwise comparisons of input protein sequences from V . reflexo-pilosa , V . mungo , and V . radiata . Clustering was carried out using OrthoMCL software version 2.0.9 [ 49 ] based on a Markov clustering algorithm. Syntenic blocks between V. reflexo-pilosa , V. mungo , and V. radiata were identified by MCscanX and plotted with CIRCOS using the criteria mentioned above (at least ten colinear genes and fewer than six intervening genes allo w ed).
 
+
+### Transposable element annotation 
+
+RepeatModeler (v2.0.1)63
+library with default parameters. LTR_Finder (v1.07)64 parameters and LTR_harvest (v1.6.1)65
+was used to construct a nonredundant TE with default
+with parameters ‘-similar 30 -seed
+20 -minlenltr 100 -maxlenltr 3500 -motif TGCA’ were used to construct LTR-RT libraries. LTR_retriever (v2.9.0)66
+of LTR_Finder and LTR_harvest and to generate a nonredundant LTR-RT library. Thereafter, we combined the LTR-RT library and the TE library, the redundancy of which was removed using CD-HIT (v4.8.1)67
+with
+parameters ‘-c 0.8 -aS 0.8’. Finally, genome-wide repetitive sequences were annotated and classified based on the constructed library using RepeatMasker (v4.1.0; http://repeatmasker.org) with default parameters. Full-length LTR-RTs identified by LTR_retriever were clustered by CD-HIT (v4.8.1) with parameters ‘-c 0.9 -aS 0.9’. The insertion time of the intact LTR-RT was calculated using the base substitution rate of 1.3 × 10−8
+per site per year.
+
+
+### Gene prediction and functional annotation 
+
+Protein-coding gene models were predicted based on repeat-masked assemblies using a strategy that combined homology-based, transcripts-based and ab initio predictions. For homology-based gene prediction, exonerate (https://github.com/nathanweeks/exonerate) was used to detect homologous gene models with default parameters. For transcripts-based prediction, Trinity (v2.8.5)68
+was used to assemble
+mRNA-seq reads into transcripts, which were subsequently subject to PASA (v2.4.1)69
+for gene model prediction. For ab initio prediction,
+AUGUSTUS (v3.2.3; https://github.com/Gaius-Augustus/Augustus) and GeneMark (v4.69_lic)70
+were used to predict gene structures, incorporating transcriptome data as evidence. Finally, EVidenceModeler (v1.1.1)71
+was used to merge gene predictions from the three approaches
+and generate a weighted consensus gene set for each genome assembly. Predicted gene models were checked to ensure the correct placement of start and stop codons. Genes containing internal stop codons or
+lacking the start/stop codons were removed. BUSCO was used to evaluate the completeness of gene annotation. InterProScan (v5.46-81.0)72 was then used to predict motifs and functional domains. Gene ontology (GO) information was extracted from the output of InterProScan. GO enrichment analysis was performed by ClusterProfiler (v4.0.5)73
+
+
+
+### Phylogenetic analysis 
+
+For the 704 resequencing accessions, a total of 6,704,072 filtered SNPs were used for phylogenetic analysis by FastTree (v2.1.11) with default parameters. The online tool iTOL (http://itol.embl.de) was used to visualize the constructed tree. We also constructed a phylogenetic tree, including the 27 de novo assembled B. oleracea genomes and the Arabidopsis genome (outgroup). Single-copy genes between these 28 genomes were determined by OrthoFinder (v2.4.0)26
+with default
+parameters. The coding sequences of the single-copy gene families were aligned using MUSCLE (v3.8.1551)74
+. Gblock (v0.91b)75
+The phylogenetic tree was constructed using FastTree77 parameters and visualized using iTOL.
+was used
+to extract the conserved sequences among the 28 genomes. Seqkit (v2.1.0)76
+was used to concatenate sequences for phylogenetic analysis.
+
