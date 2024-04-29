@@ -36,30 +36,30 @@
 #         shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
 
 
-
-
 rule repeatMasker0:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
-        lib = IN_PATH + "/BACKUP/Repeat/Vigna_unguiculata_contig-families.fa",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+        lib = IN_PATH + "/Repeats/repeatModeler/Merge/merge.families.cluster.fa",
     output:
-        mask = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.masked",
-        out = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.out",
+        mask = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.masked",
+        out = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out",
     threads:
         THREADS
     params:
-        outPrefix = IN_PATH + "/Repeat/repeatMasker/{sample}",
+        outPrefix = IN_PATH + "/Repeats/repeatMasker/{sample}",
     log:
         IN_PATH + "/log/repeatMasker_{sample}.log",
     run:
         cmd = "source activate TE2 && RepeatMasker -xsmall -nolow -norna -html -gff -pa %s -e ncbi  -poly -lib %s  -dir %s  %s > %s 2>&1" % (threads, input.lib, params.outPrefix, input.assembly, log)
         print(cmd)
         os.system(cmd)
+
+
 #############################################################
 
 
 
-
+'''
 ########################### align each #################
 rule fastpRNA:
     input:
@@ -85,7 +85,8 @@ rule fastpRNA:
 
 rule HisatIndex:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        #assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
     output:
         ht = IN_PATH + "/GenePrediction/RNA/HisatIndex/{sample}_hisat.1.ht2",
     params:
@@ -145,7 +146,7 @@ rule BAMStats4:
         IN_PATH + "/log/BAMStats3_{sample}.log"
     run:
         shell("samtools flagstat --threads {threads}  {input.bam} > {output.stat} 2>{log}")
-
+'''
 
 
 
@@ -181,11 +182,22 @@ rule stringtie:
     run:
         shell("stringtie {input.bam} -p {threads} -o {output.gtf} > {log} 2>&1")
 
+rule gtf2gff:
+    input:
+        gtf = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gtf",
+    output:
+        gff = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gff",
+    run:
+        shell("gffread -o {output.gff} {input.gtf}")
+
+
+
+
 
 rule stringtieFasta:
     input:
         gtf = rules.stringtie.output.gtf,
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
     output:
         fasta = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie_exon.fasta",
     threads:
@@ -216,7 +228,7 @@ rule cufflinks:
 
 rule gtf2fasta1:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
         gtf = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.gtf",
     output:
         fasta = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.fasta",
@@ -242,7 +254,7 @@ rule scallop:
 
 rule gtf2fasta2:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
         gtf = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.gtf",
     output:
         fasta = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.fasta",
@@ -258,7 +270,7 @@ rule cuffmerge:
         stringtie = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gtf",
         cufflinks = IN_PATH + "/GenePrediction/RNA/cufflinks/{sample}/transcripts.gtf",
         scallop = IN_PATH + "/GenePrediction/RNA/scallop/{sample}_transcripts.gtf",
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
     output:
         transList = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/assembly_merge_list.txt",
         gtf = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/merged.gtf",
@@ -279,7 +291,7 @@ rule cuffmerge:
 
 rule gtf2fasta:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
         gtf = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/merged.gtf",
     output:
         fasta = IN_PATH + "/GenePrediction/RNA/cuffmerge/{sample}/merged.fasta",
@@ -291,6 +303,49 @@ rule gtf2fasta:
 
 
 
+############## TransDecoder ###################
+
+rule extractSeq:
+    input:
+        gtf = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gtf",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        fa = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta",
+    run:
+        shell("/home/wuzhikun/anaconda3/envs/Anno/bin/gtf_genome_to_cdna_fasta.pl {input.gtf}  {input.assembly} > {output.fa}")
+
+
+rule gtf2gff3:
+    input:
+        gtf = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gtf",
+    output:
+        gff3 = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gff3",
+    run:
+        shell("/home/wuzhikun/anaconda3/envs/Anno/bin/gtf_to_alignment_gff3.pl {input.gtf}  > {output.gff3}")
+
+rule extractORF:
+    input:
+        fa = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta",
+    output:
+        gff3 = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta.transdecoder_dir/longest_orfs.gff3",
+    params:
+        outDir = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}",
+    log:
+        IN_PATH + "/log/extractORF_{sample}.log"
+    run:
+        shell("/home/wuzhikun/anaconda3/envs/Anno/bin/TransDecoder.LongOrfs -t {input.fa} --output_dir {params.outDir} > {log} 2>&1")
+
+rule ORF:
+    input:
+        fa = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta",
+        transgff = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.gff3",
+        orfgff = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta.transdecoder_dir/longest_orfs.gff3",
+    output:
+        gff3 = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta.transdecoder.genome.gff3",
+    run:
+        shell("/home/wuzhikun/anaconda3/envs/Anno/bin/cdna_alignment_orf_to_genome_orf.pl  {input.orfgff}  {input.transgff} {input.fa} > {output.gff3}")
+
+#############################################
 
 
 
@@ -335,10 +390,10 @@ rule TansMerge:
 
 ###########################################################
 
-
+'''
 rule homo:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
     output:
         homo = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align.gff",
     params:
@@ -347,7 +402,30 @@ rule homo:
         THREADS
     run:
         shell("miniprot -t {threads}  --gff {input.assembly}  {params.protein} > {output.homo}")
+'''
 
+
+rule gffFilt:
+    input:
+        gff = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align.gff",
+    output:
+        gff = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align_filt.gff",
+    params:
+        miniProtIdenFilter = SCRIPT_DIR + "/miniProtIdenFilter.py"
+    run:
+        shell("python {params.miniProtIdenFilter} --gff {input.gff} --out {output.gff} --idenThreshold 0.8") 
+
+
+
+rule gffAddID:
+    input:
+        gff = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align.gff",
+    output:
+        gff = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align_addID.gff",
+    params:
+        gffAddID = SCRIPT_DIR + "/gffAddID.py",
+    run:
+        shell("python {params.gffAddID} --gff {input.gff} --out {output.gff}")
 
 
 
@@ -357,11 +435,11 @@ rule homo:
 ######### using masked fasta ?
 rule snap:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
     output:
         protein = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_protein.fa",
         transcript = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_transcript.fa",
-        # gff = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_transcript.gff",
+        gff = IN_PATH + "/GenePrediction/snap/{sample}/{sample}_transcript.gff",
     params:
         snap_hmm = "/home/wuzhikun/anaconda3/envs/Assembly3/share/snap/HMM/A.thaliana.hmm",
     log:
@@ -374,16 +452,20 @@ rule snap:
 
 rule augustus:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
         # assembly = IN_PATH + "/Repeats/repeatModeler/Vigna_unguiculata_contig/Vigna_unguiculata_assembly.fasta.masked",
     output:
-        predict = IN_PATH + "/GenePrediction/augustus/{sample}/{sample}_prediction.gff",
+        predict = IN_PATH + "/GenePrediction/augustus/{sample}_augustus.gff",
     log:
         IN_PATH + "/log/augustus_{sample}.log",
     threads:
         THREADS
     run:
-        shell("augustus --species=arabidopsis --softmasking=1 --gff3=on  {input.assembly} > {output.predict} 2>{log}")
+        #shell("augustus --species=arabidopsis --softmasking=1 --gff3=on  {input.assembly} > {output.predict} 2>{log}")
+        cmd = "source activate Braker && augustus  --species=arabidopsis --gff3=on %s > %s" % (input.assembly, output.predict)
+        print(cmd)
+        os.system(cmd)
+
 
 
 
@@ -434,3 +516,148 @@ rule MergeProtein:
 #         shell("cd {params.outDir} && perl {params.EDTA} --step all  --genome  {input.assembly}  --species others --cds {params.CDSSeq} --overwrite 1 --sensitive 1 --anno 1 --evaluate 1 --threads {threads} > {log} 2>&1")
 
 ########################################
+
+
+
+rule EVidenceModeler:
+    input:
+        genome = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+        augustus = IN_PATH + "/GenePrediction/augustus/{sample}_augustus.gff",
+        stringtie = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta.transdecoder.genome.gff3",
+        miniprot = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align_addID.gff",
+        repeat = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out.gff"
+    output:
+        evidence = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.evm.out",
+        EVM = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gff3",
+    threads:
+        THREADS
+    params:
+        weight = IN_PATH + "/config/Trans_weight.txt",
+        outDir = IN_PATH + "/GenePrediction/evidencemodeler/{sample}",
+    log:
+        IN_PATH + "/log/EVidenceModeler_{sample}.log"
+    run:
+        ### EVidenceModeler --sample_id CPG11 --segmentSize 100000 --overlapSize 10000  --genome /home/wuzhikun/Project/PanSV/Scaffold/CPG11.genome.fasta  --weights /home/wuzhikun/Project/BAssembly/pipeline/evidencemodeler/Trans_weight.txt --gene_predictions  /home/wuzhikun/Project/PanSV/GenePrediction/augustus/CPG11_augustus.gff --protein_alignments  /home/wuzhikun/Project/PanSV/GenePrediction/homo/miniprot/CPG11_align.gff --transcript_alignments  /home/wuzhikun/Project/PanSV/GenePrediction/RNA/Stringtie/CPG11/CPG11_RNA_stringtie.gtf  --repeats /home/wuzhikun/Project/PanSV/Repeats/repeatMasker/CPG11/CPG11.genome.fasta.out.gff --CPU 16  > /home/wuzhikun/Project/BAssembly/pipeline/evidencemodeler/CPG11.evm.out 2>CPG11.evm.out.log  
+        if not os.path.exists(params.outDir):
+            os.makedirs(params.outDir)
+        cmd = "source activate Anno &&  cd %s &&  EVidenceModeler --sample_id %s --segmentSize 100000 --overlapSize 10000  --genome %s  --weights %s --gene_predictions  %s --protein_alignments  %s --transcript_alignments  %s  --repeats %s --CPU %s  > %s 2>%s " % (params.outDir, wildcards.sample, input.genome, params.weight, input.augustus, input.miniprot, input.stringtie, input.repeat, threads, output.evidence, log)
+        print(cmd)
+        os.system(cmd)
+
+
+
+
+
+
+rule barrnap:
+    input:
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        fa = IN_PATH + "/GenePrediction/barrnap/{sample}.barrnap_seq.fasta",
+        predict = IN_PATH + "/GenePrediction/barrnap/{sample}.barrnap_predict.txt",
+    threads:
+        THREADS
+    run:
+        ### Env: Anno
+        shell("barrnap --kingdom euk --threads {threads} --outseq {output.fa} {input.assembly} > {output.predict}")
+
+
+rule rfamInfernalPan:
+    input:
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        table = IN_PATH + "/GenePrediction/Rfam/{sample}_Rfam_table.txt",
+        hit = IN_PATH + "/GenePrediction/Rfam/{sample}_Rfam_predict.txt",
+    params:
+        Rfam = "/home/wuzhikun/database/Rfam/Rfam.cm"
+    threads:
+        THREADS 
+    log:
+        IN_PATH + '/log/rfam_{sample}.log' 
+    run:
+        ### infernal
+        # shell("cmpress {params.Rfam}")
+        shell("cmscan --cpu {threads}  --tblout {output.table}  -o {output.hit}   {params.Rfam} {input.assembly} > {log} 2>&1")
+
+
+rule tRNAscanPan:
+    input:
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        table = IN_PATH + "/GenePrediction/tRNAscan/{sample}_tRNAscan_table.txt",
+        stats = IN_PATH + "/GenePrediction/tRNAscan/{sample}_tRNAscan_stats.txt",
+        structure = IN_PATH + "/GenePrediction/tRNAscan/{sample}_tRNAscan_structure.txt",
+        bed = IN_PATH + "/GenePrediction/tRNAscan/{sample}_tRNAscan_bed.txt",
+    threads:
+        THREADS 
+    log:
+        IN_PATH + '/log/tRNAscan_{sample}.log' 
+    run:
+        ### -g ~/soft/miniconda3/pkgs/trnascan-se-2.0.6-pl526h516909a_0/lib/tRNAscan-SE/gcode/gcode.vertmito
+        shell("tRNAscan-SE -qQ --detail --thread {threads} -o {output.table} -m {output.stats} -f {output.structure} -b {output.bed}   {input.assembly} > {log} 2>&1")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rule hisatEachCPG01:
+    input:
+        ht = IN_PATH + "/GenePrediction/RNA/HisatIndex/{sample}_hisat.1.ht2",
+        R1 = IN_PATH + '/clean/CPG01.RNA.R1.fq.gz',
+        R2 = IN_PATH + '/clean/CPG01.RNA.R2.fq.gz',
+    output:
+        sam = temp(IN_PATH + "/GenePrediction/RNA/hisatCPG01/{sample}/ngs_RNA_hisat.sam"),
+    params:
+        prefix = IN_PATH + "/GenePrediction/RNA/HisatIndex/{sample}_hisat",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/hisatEach_{sample}.log", 
+    run:
+        shell("hisat2 --dta -q --sensitive --threads {threads} -x {params.prefix} -1 {input.R1} -2 {input.R2} -S {output.sam} > {log} 2>&1")
+
+
+rule hisatBAMCPG01:
+    input:
+        sam = IN_PATH + "/GenePrediction/RNA/hisatCPG01/{sample}/ngs_RNA_hisat.sam",
+    output:
+        bam = IN_PATH + "/GenePrediction/RNA/hisatCPG01/{sample}/ngs_RNA_hisat.bam",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/hisatbam_{sample}.log", 
+    run:
+        shell("samtools view -@ {threads} -b {input.sam} | samtools sort -  -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index {output.bam}")
+
+
+rule BAMStatsCPG01:
+    input:
+        bam = IN_PATH + "/GenePrediction/RNA/hisatCPG01/{sample}/ngs_RNA_hisat.bam",
+    output:
+        stat = IN_PATH + '/GenePrediction/RNA/hisatCPG01/{sample}_ngs_RNA_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats3_{sample}.log"
+    run:
+        shell("samtools flagstat --threads {threads}  {input.bam} > {output.stat} 2>{log}")
+
+
+
+
+

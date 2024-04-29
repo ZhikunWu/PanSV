@@ -161,6 +161,19 @@ rule NGSStats:
         shell("seqkit stats -aT {input.R1} {input.R2} > {output.stats}")
 
 
+rule RNAStats:
+    input:
+        R1 = IN_PATH + "/clean/{sample}.RNA.R1.fq.gz",
+        R2 = IN_PATH + "/clean/{sample}.RNA.R2.fq.gz",
+    output:
+        stats = IN_PATH + "/QualityControl/NGS/clean/{sample}_RNA.clean.stats.txt",
+    threads:
+        THREADS
+    run:
+        shell("seqkit stats -aT {input.R1} {input.R2} > {output.stats}")
+
+
+
 
 
 rule MergeStatClean:

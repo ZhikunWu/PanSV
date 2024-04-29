@@ -35,7 +35,7 @@ Manhattan_QQ_plot <- function(infile, manhattan_pdf, qq_pdf){
     ### manhattan(data, cex = 0.5, cex.axis = 0.8, highlight = snpsOfInterest, col = c("blue4", "orange3"), ymax = 12, genomewideline = T)
     ### manhattan(subset(gwasResults, CHR == 1))
     #manhattan(data, genomewideline=-log10(5e-8),  suggestiveline=FALSE, main = "Manhattan Plot")
-    manhattan(data1, genomewideline=-log10(2.9e-5),  suggestiveline=FALSE, main = "Manhattan Plot")
+    manhattan(data1, genomewideline=-log10(2.57e-7),  suggestiveline=FALSE, main = "Manhattan Plot")
     dev.off()
 
     #pdf(qq_pdf, width=3.5, height=4)

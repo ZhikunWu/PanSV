@@ -57,6 +57,23 @@ rule anchorRatio:
     run:
         shell("python {params.AnchorRatio} --fasta {input.assembly} --out {output.anchor}")
 
+"""
+rule AnchorRatioSum:
+    input:
+        anchor = expand(IN_PATH + "/Summary/anchor/{species}/{sample}.anchor_ratio.txt", species=SPECIES, sample=SAMPLES),
+    output:
+        summary = IN_PATH + "/Summary/anchor/{species}/scaffold.anchor_ratio.summary.xls",
+    run:
+        Files = sorted(input.anchor)
+        fileNum = len(Files)
+        for i in range(fileNum):
+            f = Files[i]
+            if i == 0:
+                cmd = "cat %s > %s" % (f, output.summary)
+            else:
+                cmd = "sed '1d' %s >> %s" % (f, output.summary)
+            os.system(cmd)
+"""
 #####################################################
 
 
@@ -486,3 +503,157 @@ rule repeatMasker:
 
 
 ###########################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################### ONT ##########################
+rule ONTAlignSelf:
+    input:
+        fastq = IN_PATH + "/clean/{sample}_ONT.fastq.gz",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta"
+    output:
+        sam = temp(IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.sam"),
+        bam = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.bam",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/ONTAlignselt_{sample}.log"
+    run:
+        shell("minimap2 --MD -a -x map-ont -t {threads} {input.assembly} {input.fastq} > {output.sam} 2>{log}")
+        shell("samtools view -@ {threads} -b {output.sam} | samtools sort -  -@ {threads} -o {output.bam} > {log} 2>&1")
+        shell("samtools index {output.bam}")
+
+
+
+rule ONTCovSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.bam",
+    output:
+        bw = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT_WGS.bw",
+    log:
+        IN_PATH + "/log/ONTCov_{sample}.log"
+    run:
+        shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+
+
+
+rule ONTDepthSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.bam",
+    output:
+        depth = IN_PATH +  "/Evaluation/mapping/ONT/{sample}/{sample}_ONT.per-base.bed.gz",
+    threads:
+        THREADS
+    params:
+        outPrefix = IN_PATH + '/Evaluation/mapping/ONT/{sample}/{sample}_ONT',
+    log:
+        IN_PATH + "/log/ONTDepthSelf_{sample}.log"
+    run:
+        # shell('mosdepth --threads {threads} --fast-mode --flag 256  {params.outPrefix} {input.bam} > {log} 2>&1')
+        cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
+        print(cmd)
+        os.system(cmd)
+
+############################################
+
+
+
+
+###################### NGS ###################
+
+rule SelfBWAIndex:
+    input:
+        ref = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        bwt = IN_PATH + "/Scaffold/{sample}.genome.fasta.bwt",
+    run:
+        if not os.path.exists(output.bwt):
+            cmd = 'bwa index %s' % input.ref
+            os.system(cmd)
+
+
+rule SelfBWAAlign:
+    input:
+        ref = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+        bwt = IN_PATH + "/Scaffold/{sample}.genome.fasta.bwt",
+        R1 = IN_PATH + '/clean/{sample}_NGS.R1.fastq.gz',
+        R2 = IN_PATH + '/clean/{sample}_NGS.R2.fastq.gz',
+    output:
+        sam = temp(IN_PATH + '/Evaluation/mapping/NGS/{sample}.sam'),
+    threads:
+        THREADS
+        # rg = "@RG\tID:01\tPL:ILLUMINA\tPU:{sample}\tSM:{sample}",
+    log:
+        IN_PATH + "/log/{sample}.SelfBWAAlign.log",
+    run:
+        shell('bwa mem -M -t {threads} {input.ref} {input.R1} {input.R2} > {output.sam} 2>{log}')
+
+
+
+rule SelfSAM2BAM:
+    input:
+        sam = IN_PATH + '/Evaluation/mapping/NGS/{sample}.sam',
+    output:
+        tempbam = temp(IN_PATH + '/Evaluation/mapping/NGS/{sample}_temp.bam'),
+        bam = IN_PATH + '/Evaluation/mapping/NGS/{sample}_align.bam',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/{sample}.SelfSAM2BAM.log",
+    run:
+        shell('sambamba view --nthreads {threads} --sam-input --format bam  -o {output.tempbam} {input.sam} >{log} 2>&1' )
+        shell('samtools sort --threads {threads} -o {output.bam} {output.tempbam} 2>>{log}')
+
+
+
+
+rule SelfBAMStats:
+    input:
+        bam = IN_PATH + '/Evaluation/mapping/NGS/{sample}_align.bam',
+    output:
+        stat = IN_PATH + '/Evaluation/mapping/NGS/{sample}_bam_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/SelfBAMStats_{sample}.log"
+    run:
+        shell("samtools flagstat --threads {threads} {input.bam} > {output.stat} 2>{log}")
+
+###################################################################
+
+
+
+
+rule AssemblyMashmap:
+    input:
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    output:
+        mashmap = IN_PATH + "/Evaluation/mashmap/{sample}/mashmap.out.txt",
+    params:
+        RefGenome = "/home/wuzhikun/Project/PanSV/BACKUP/Assembly/Fengchan6/Vigna_unguiculata_assembly.fasta",
+        mashmap = "/home/wuzhikun/software/mashmap-Linux64-v2.0/mashmap",
+        generateDotPlot = "/home/wuzhikun/software/mashmap-Linux64-v2.0/MashMap/scripts/generateDotPlot",
+        outPrefix = IN_PATH + "/Evaluation/mashmap/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/AssemblyMashmap_{sample}.log"
+    run:
+        shell("{params.mashmap} -r {params.RefGenome} -q {input.assembly} --perc_identity 95 --threads {threads} --segLength 50000 --filter_mode one-to-one --output {output.mashmap} > {log} 2>&1")
+        shell("cd {params.outPrefix} && {params.generateDotPlot} png  large  {output.mashmap}")
+
+
+

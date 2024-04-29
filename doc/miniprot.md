@@ -60,3 +60,7 @@ index
 miniprot -t8 -d ref.mpi ref.fna
 ```
 
+```
+miniprot --gff test/DPP3-hs.gen.fa.gz test/DPP3-mm.pep.fa.gz > aln.gff
+```
+

@@ -550,6 +550,11 @@ rule ScaffoldStats:
         shell("seqkit stats -aT {input.assembly} > {output.stats}")
 
 
+
+
+
+
+
 rule ScaffoldStatsMerge:
     input:
         stats = expand(IN_PATH + "/Assembly/RagTag/{sample}/ragtag.scaffold.stats.xls", sample=SAMPLES),
@@ -601,6 +606,18 @@ rule Scaffold:
         THREADS
     run:
         shell("seqkit seq -u -w 60 {input.assembly} | sed 's/_RagTag//g' > {output.assembly}")
+
+
+rule Scaffold2:
+    input:
+        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
+    output:
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+    threads:
+        THREADS
+    run:
+        shell("sed 's/_np121212//g' {input.assembly}  > {output.assembly}")
+
 #####################################################
 
 

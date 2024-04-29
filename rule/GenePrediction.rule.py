@@ -34,17 +34,17 @@
 #         IN_PATH + "/log/repeatModeler_{sample}.log",
 #     run:
 #         shell("cd {params.outDir} &&  RepeatModeler -pa {threads} -database {params.outPrefix}  -engine ncbi > {log} 2>&1")
-
+'''
 
 
 
 rule repeatMasker0:
     input:
-        assembly = IN_PATH + "/Assembly/Scaffold/{sample}.scaffold.fasta",
-        lib = IN_PATH + "/BACKUP/Repeat/Vigna_unguiculata_contig-families.fa",
+        assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+        lib = IN_PATH + "/Repeats/repeatModeler/Merge/merge.families.cluster.fa",
     output:
-        mask = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.masked",
-        out = IN_PATH + "/Repeat/repeatMasker/{sample}/{sample}.scaffold.fasta.out",
+        mask = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.masked",
+        out = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out",
     threads:
         THREADS
     params:
@@ -59,7 +59,7 @@ rule repeatMasker0:
 
 
 
-
+'''
 ########################### align each #################
 rule fastpRNA:
     input:

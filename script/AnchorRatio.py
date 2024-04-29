@@ -14,6 +14,7 @@ def anchor_ratio(fasta_file, out_file):
 
     TotalLen = 0
     ChromLen = 0
+    ChrNum = 0
     ScaffoldLen = 0
     for record in FastaParser(fasta_file):
         desc = str(record.description)
@@ -21,6 +22,7 @@ def anchor_ratio(fasta_file, out_file):
         seqLen = len(seq)
         if "chromosome" in desc.lower():
             ChromLen += seqLen
+            ChrNum += 1
         else:
             ScaffoldLen += seqLen
         
@@ -44,8 +46,8 @@ def anchor_ratio(fasta_file, out_file):
     AnchorRatio = ChromLen / TotalLen
     AnchorRatio = "%.3f" % AnchorRatio
     out_h = open(out_file, "w")
-    out_h.write("Species\tTotal\tChromosome\tScaffold\tAnchorRatio\n")
-    out_h.write("%s\t%s\t%s\t%s\t%s\n" % (name, format(TotalLen, ","), format(ChromLen, ","), format(ScaffoldLen, ","), AnchorRatio))
+    out_h.write("Species\tChrNum\tTotal\tChromosome\tScaffold\tAnchorRatio\n")
+    out_h.write("%s\t%d\t%s\t%s\t%s\t%s\n" % (name, ChrNum, format(TotalLen, ","), format(ChromLen, ","), format(ScaffoldLen, ","), AnchorRatio))
 
 
 def main():

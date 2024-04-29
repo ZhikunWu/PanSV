@@ -860,14 +860,14 @@ rule associations:
         bed = IN_PATH + "/NGS/Variant/Sample_jointcall.twoallel.maf005.bed",
         ks = IN_PATH + "/NGS/Variant/GWASGemma/output/geno_kS.cXX.txt",
         # pheno1 = IN_PATH + "/NGS/phenotype/{trait}.txt",
-        pheno1 = IN_PATH + "/NGS/Variant/phenotype/{trait}.txt",
+        pheno1 = IN_PATH + "/NGS/phenotype2023/{trait}.txt",
     output:
-        asso1 = IN_PATH + "/NGS/Variant/GWASGemma/output/{trait}.assoc.txt",
+        asso1 = IN_PATH + "/NGS/Variant/GWASGemma2023/output/{trait}.assoc.txt",
     threads:
         THREADS
     params:
         inPrefix = IN_PATH + "/NGS/Variant/Sample_jointcall.twoallel.maf005",
-        outDir = IN_PATH + "/NGS/Variant/GWASGemma",
+        outDir = IN_PATH + "/NGS/Variant/GWASGemma2023",
     log:
         IN_PATH + "/log/association_{trait}.log", 
     run:
@@ -902,10 +902,10 @@ def changeChrString(in_file, out_file):
 
 rule SVManhattanPlot0:
     input:
-        assoc = IN_PATH + "/NGS/Variant/GWASGemma/output/{trait}.assoc.txt",
+        assoc = IN_PATH + "/NGS/Variant/GWASGemma2023/output/{trait}.assoc.txt",
     output:
-        assoc = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc.txt",
-        assoc1 = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc-1.txt",
+        assoc = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc.txt",
+        assoc1 = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc-1.txt",
     run:
         shell("echo 'SNP CHR BP P' | sed 's/ /\t/g'   > {output.assoc}")
         cmd = """sed '1d' %s | grep -v "_un" | awk '{print $2"\t"$1"\t"$3"\t"$12}' >> %s"""  % (input.assoc, output.assoc)
@@ -918,10 +918,10 @@ rule SVManhattanPlot0:
 
 rule TraitManhattanPlot1:
     input:
-        assoc = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc-1.txt",
+        assoc = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc-1.txt",
     output:
-        manhattan = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc_mahattan.jpeg",
-        qq = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc_qq.jpeg",
+        manhattan = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc_mahattan.jpeg",
+        qq = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc_qq.jpeg",
     params:
         GWASPlot = SCRIPT_DIR + "/GWASPlot.R",
     log:
@@ -934,9 +934,9 @@ rule TraitManhattanPlot1:
 
 rule SigLoci2:
     input:
-        asso = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc-1.txt",
+        asso = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc-1.txt",
     output:
-        sig = IN_PATH + "/NGS/Variant/GWASGemma/output/plot/{trait}.assoc_sig.txt",
+        sig = IN_PATH + "/NGS/Variant/GWASGemma2023/output/plot/{trait}.assoc_sig.txt",
     run:
         # cmd = "awk '{if ($4 < 2.3e-7){print $0}}'  %s > %s" % (input.asso, output.sig)
         cmd = "awk '{if ($4 < 2.57e-7){print $0}}'  %s > %s" % (input.asso, output.sig)

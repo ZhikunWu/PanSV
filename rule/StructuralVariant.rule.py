@@ -203,6 +203,16 @@ rule SVIM:
         os.system(cmd)
 
 
+rule SVIMFilt:
+    input:
+        vcf = IN_PATH + "/SVCall/SVIM/{sample}/variants.vcf",
+    output:
+        vcf = IN_PATH + "/SVCall/SV/{sample}.SVIM.vcf",
+    run:
+        shell("grep '^#' {input.vcf} > {output.vcf}")
+        shell("grep '0/1' {input.vcf} >> {output.vcf}")
+        shell("grep '1/1' {input.vcf} >> {output.vcf}")
+
 # ##########################################################
 rule snf:
     input:
