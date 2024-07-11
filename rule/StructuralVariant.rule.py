@@ -53,7 +53,7 @@
 # ########################################################
 
 
-
+'''
 
 # ######################### SV ###########################
 rule ONTAlignRef:
@@ -71,31 +71,32 @@ rule ONTAlignRef:
         shell("minimap2 --MD -a -x map-ont -t {threads} {input.assembly} {input.fastq} > {output.sam} 2>{log}")
         shell("samtools view -@ {threads} -b {output.sam} | samtools sort -  -@ {threads} -o {output.bam} > {log} 2>&1")
         shell("samtools index {output.bam}")
+'''
         
 
-# rule BAMStats2:
-#     input:
-#         bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
-#     output:
-#         stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_bam_stats.xls',
-#     threads:
-#         THREADS
-#     log:
-#         IN_PATH + "/log/BAMStats2_{sample}.log"
-#     run:
-#         shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
+rule BAMStats2:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_bam_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats2_{sample}.log"
+    run:
+        shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
 
-# rule BAMStats3:
-#     input:
-#         bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
-#     output:
-#         stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_flag_stats.xls',
-#     threads:
-#         THREADS
-#     log:
-#         IN_PATH + "/log/BAMStats3_{sample}.log"
-#     run:
-#         shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
+rule BAMStats3:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        stat = IN_PATH + '/SVCall/mapping/{sample}_ONT_flag_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats3_{sample}.log"
+    run:
+        shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
 
 
 
@@ -178,6 +179,29 @@ rule nanovar:
         cmd = "source activate nanovar && nanovar -t %s --data_type ont --mincov 5 --minlen 50 %s %s %s > %s 2>&1" % (threads, input.bam, params.RefGenome, params.outdir, log)
         print(cmd)
         os.system(cmd)
+
+
+
+rule SVision:
+    input:
+        bam = IN_PATH + "/SVCall/mapping/{sample}_ONT.bam",
+    output:
+        vcf = IN_PATH + "/SVCall/SVision/{sample}/{sample}.svision.s3.graph.vcf",
+    log:
+        IN_PATH + "/log/SVision_{sample}.log", 
+    params:
+        model = "/home/zhengjingjing/software/SVision/svision_model/svision-cnn-model.ckpt",
+        RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+        outDir = IN_PATH + "/SVCall/SVision/{sample}",
+    threads:
+        THREADS
+    run:
+        # shell("source activate /home/zhengjingjing/anaconda3/envs/svisionenv && SVision  -o {params.outDir} -b {input.bam} -m {params.model} -g {params.RefGenome} -n {wildcards.sample} -s 3 --graph --qname -t {threads} > {log} 2>&1")
+        cmd = "source activate /home/zhengjingjing/anaconda3/envs/svisionenv && SVision  -o %s -b %s -m %s -g %s -n %s -s 3 --graph --qname -t %s > %s 2>&1" % (params.outDir, input.bam, params.model, params.RefGenome, wildcards.sample, threads, log)
+        print(cmd)
+        os.system(cmd)
+
+
 
 # ##########################################################
 

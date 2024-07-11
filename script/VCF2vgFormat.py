@@ -12,7 +12,7 @@ def Infor_substution_tag(Infor, targetTag, NewValue):
 
     Tags = []
     for i in Infors[1:]:
-        print(i)
+        #print(i)
         tag, value = i.split("=")
         Tags.append(tag)
         TagValues[tag] = value

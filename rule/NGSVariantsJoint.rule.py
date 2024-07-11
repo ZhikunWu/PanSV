@@ -283,3 +283,69 @@ rule MergeChrVCF:
         shell("tabix -p vcf {output.vcf}")
 
 ##############################################################################
+
+
+
+#################### joint call SNV ##############
+rule JointChrs3:
+    input:
+        tbi = expand(IN_PATH + '/NGS/Joint/gVCF/{sample}_NGS.g.vcf.gz.tbi', sample=SAMPLES),
+        gvcf = expand(IN_PATH + '/NGS/Joint/gVCF/{sample}_NGS.g.vcf.gz', sample=SAMPLES),
+    output:
+        gvcf = IN_PATH + '/NGS/AllSamples/Samples_jointcall_{Chr}.g.vcf',    
+    params:
+        REF = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/JointChrs_{Chr}.log",  
+    run:
+        Files = sorted(input.gvcf)
+        IN = "  -V ".join(Files)
+        shell("gatk --java-options -Xmx20g CombineGVCFs -R {params.REF} -V {IN} -O {output.gvcf} -L {wildcards.Chr} > {log} 2>&1") 
+
+
+
+rule JointCallChrs3:
+    input:
+        gvcf = IN_PATH + '/NGS/AllSamples/Samples_jointcall_{Chr}.g.vcf', 
+    output:
+        vcf = temp(IN_PATH + '/NGS/AllSamples/Sample_jointcall.variant.{Chr}.vcf'),
+    params:
+        REF = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/JointCallChr_{Chr}.log",  
+    run:
+        shell("gatk --java-options -Xmx20g  GenotypeGVCFs -R {params.REF} -V {input.gvcf} -L {wildcards.Chr}  -O {output.vcf} --allow-old-rms-mapping-quality-annotation-data  > {log} 2>&1")
+
+
+rule vcfbgip3:
+    input:
+        vcf = IN_PATH + '/NGS/AllSamples/Sample_jointcall.variant.{Chr}.vcf',
+    output:
+        vcf = IN_PATH + '/NGS/AllSamples/Sample_jointcall.variant.{Chr}.vcf.gz',
+    run:
+        shell("bgzip {input.vcf}")
+        shell("tabix -p vcf {output.vcf}")
+
+
+
+rule MergeChrVCF3:
+    input:
+        vcf = expand(IN_PATH + '/NGS/AllSamples/Sample_jointcall.variant.{Chr}.vcf.gz', Chr=CHRS),
+    output:
+        vcf = IN_PATH + '/NGS/AllSamples/Sample_all_chrom_variant.vcf.gz',
+    run:
+        Files = " ".join(sorted(input.vcf))
+        shell("bcftools concat -Oz -o {output.vcf} {Files} ")
+        shell("tabix -p vcf {output.vcf}")
+
+
+#################################################################
+
+
+
+
+

@@ -546,7 +546,7 @@ rule ONTCovSelf:
     log:
         IN_PATH + "/log/ONTCov_{sample}.log"
     run:
-        shell("bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+        shell("/home/wuzhikun/anaconda3/envs/RNA2/bin/bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
 
 
 
@@ -566,6 +566,45 @@ rule ONTDepthSelf:
         cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
         print(cmd)
         os.system(cmd)
+
+
+
+rule SnifflesSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.bam",
+    output:
+        vcf = IN_PATH + "/Evaluation/mapping/ONT/{sample}.sniffles.vcf",
+    threads:
+        THREADS 
+    log:
+        IN_PATH + "/log/SnifflesSelf_{sample}.log"
+    run:
+        shell("sniffles --mapped_reads {input.bam} --vcf {output.vcf} --threads {threads}  --min_support 3 --min_length 50 --minmapping_qual 20 --num_reads_report -1 --min_seq_size 500  --genotype --report_BND --report-seq  >{log} 2>&1")
+
+
+
+rule cuteSVSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/ONT/{sample}_ONT.bam",
+    output:
+        vcf = IN_PATH + "/Evaluation/mapping/ONT/{sample}.cutesv.vcf",
+    threads:
+        THREADS 
+    params:
+        RefGenome = "/Scaffold/{sample}.genome.fasta",
+        tempDir = IN_PATH + "/Evaluation/mapping/ONT/cuteSVTemp/{sample}",
+    log:
+        IN_PATH + "/log/cuteSVSelf_{sample}.log"
+    run:
+        if not os.path.exists(params.tempDir):
+            os.makedirs(params.tempDir)
+        cmd = "source activate nanovar && cuteSV --max_cluster_bias_INS 100   --diff_ratio_merging_INS 0.3 --max_cluster_bias_DEL 100 --diff_ratio_merging_DEL 0.3 --threads %s --sample  %s --report_readid --min_support 5  --min_size 50 --min_siglength 50  --max_size -1 --genotype %s  %s %s %s > %s  2>&1" % (threads, wildcards.sample, input.bam, params.RefGenome, output.vcf, params.tempDir, log)
+        print(cmd)
+        os.system(cmd)
+
+
+
+
 
 ############################################
 
@@ -616,6 +655,7 @@ rule SelfSAM2BAM:
     run:
         shell('sambamba view --nthreads {threads} --sam-input --format bam  -o {output.tempbam} {input.sam} >{log} 2>&1' )
         shell('samtools sort --threads {threads} -o {output.bam} {output.tempbam} 2>>{log}')
+        shell("samtools index {output.bam}")
 
 
 
@@ -631,6 +671,38 @@ rule SelfBAMStats:
         IN_PATH + "/log/SelfBAMStats_{sample}.log"
     run:
         shell("samtools flagstat --threads {threads} {input.bam} > {output.stat} 2>{log}")
+
+
+
+rule NGSCovSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/NGS/{sample}_align.bam",
+    output:
+        bw = IN_PATH + "/Evaluation/mapping/NGS/{sample}_NGS_WGS.bw",
+    log:
+        IN_PATH + "/log/NGSCov_{sample}.log"
+    run:
+        shell("/home/wuzhikun/anaconda3/envs/RNA2/bin/bamCoverage -b {input.bam} -o {output.bw} > {log} 2>&1")
+
+
+
+rule NGSDepthSelf:
+    input:
+        bam = IN_PATH + "/Evaluation/mapping/NGS/{sample}_align.bam",
+    output:
+        depth = IN_PATH +  "/Evaluation/mapping/NGS/{sample}/{sample}_NGS.per-base.bed.gz",
+    threads:
+        THREADS
+    params:
+        outPrefix = IN_PATH + '/Evaluation/mapping/NGS/{sample}/{sample}_NGS',
+    log:
+        IN_PATH + "/log/NGSDepthSelf_{sample}.log"
+    run:
+        # shell('mosdepth --threads {threads} --fast-mode --flag 256  {params.outPrefix} {input.bam} > {log} 2>&1')
+        cmd = "source activate NanoSV && mosdepth --threads %s --fast-mode --flag 256  %s %s > %s 2>&1" % (threads, params.outPrefix, input.bam, log)
+        print(cmd)
+        os.system(cmd)
+
 
 ###################################################################
 

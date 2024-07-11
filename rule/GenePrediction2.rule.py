@@ -1,4 +1,4 @@
-
+'''
 ############################################################################
 # rule BuildDatabase:
 #     input:
@@ -43,6 +43,7 @@ rule repeatMasker0:
     output:
         mask = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.masked",
         out = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out",
+        gff = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out.gff",
     threads:
         THREADS
     params:
@@ -80,7 +81,7 @@ rule fastpRNA:
         IN_PATH + "/log/trim/{sample}.log", 
     run:
         shell("fastp --in1 {input.R1} --in2 {input.R2} --out1 {output.R1} --out2 {output.R2} --thread {threads} --compression 2 --length_required {params.length_required} --qualified_quality_phred {params.qualified_quality_phred}  --unqualified_percent_limit {params.unqualified_percent_limit} --cut_front --cut_tail --cut_window_size {params.cut_window_size} --cut_mean_quality {params.cut_mean_quality} >{log} 2>&1")
-
+'''
 
 
 rule HisatIndex:
@@ -146,7 +147,7 @@ rule BAMStats4:
         IN_PATH + "/log/BAMStats3_{sample}.log"
     run:
         shell("samtools flagstat --threads {threads}  {input.bam} > {output.stat} 2>{log}")
-'''
+
 
 
 
@@ -390,7 +391,7 @@ rule TansMerge:
 
 ###########################################################
 
-'''
+
 rule homo:
     input:
         assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
@@ -402,7 +403,7 @@ rule homo:
         THREADS
     run:
         shell("miniprot -t {threads}  --gff {input.assembly}  {params.protein} > {output.homo}")
-'''
+
 
 
 rule gffFilt:
@@ -549,6 +550,48 @@ rule EVidenceModeler:
 
 
 
+################## rename gene ###################
+rule gffRename:
+    input:
+        gff = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gff3",
+    output:
+        gff = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.gene.gff3",
+        gene = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.rename.txt",
+    params:
+        EvmGffRename = SRC_DIR + '/EvmGffRename.py',
+    run:
+        shell("python {params.EvmGffRename} --gff {input.gff} --out {output.gff} --out2 {output.gene}")
+
+'''
+
+
+rule rename2:
+    input:
+        gff = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.gene.gff3",
+        pep = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.pep.fasta",
+        cds = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.cds.fasta",
+    output:
+        gff = IN_PATH + "/GenePrediction/Gene2/{sample}/{sample}.gene.gff3",
+        pep = IN_PATH + "/GenePrediction/Gene2/{sample}/{sample}.pep.fasta",
+        cds = IN_PATH + "/GenePrediction/Gene2/{sample}/{sample}.cds.fasta",
+    params:
+        GeneAddName = SCRIPT_DIR + "/GeneAddName.py",
+    run:
+        shell("python {params.GeneAddName} --input {input.gff} --out {output.gff} --format gff --name {wildcards.sample}")
+        shell("python {params.GeneAddName} --input {input.pep} --out {output.pep} --format fasta --name {wildcards.sample}")
+        shell("python {params.GeneAddName} --input {input.cds} --out {output.cds} --format fasta --name {wildcards.sample}")
+
+##########################################################
+
+
+
+
+
+
+'''
+
+
+
 rule barrnap:
     input:
         assembly = IN_PATH + "/Scaffold/{sample}.genome.fasta",
@@ -596,6 +639,38 @@ rule tRNAscanPan:
         ### -g ~/soft/miniconda3/pkgs/trnascan-se-2.0.6-pl526h516909a_0/lib/tRNAscan-SE/gcode/gcode.vertmito
         shell("tRNAscan-SE -qQ --detail --thread {threads} -o {output.table} -m {output.stats} -f {output.structure} -b {output.bed}   {input.assembly} > {log} 2>&1")
 
+'''
+
+
+rule RNAIndStats:
+    input:
+        tRNAscan = IN_PATH + "/GenePrediction/tRNAscan/{sample}_tRNAscan_bed.txt",
+        barrnap = IN_PATH + "/GenePrediction/barrnap/{sample}.barrnap_predict.txt",
+        Rfam = IN_PATH + "/GenePrediction/Rfam/{sample}_Rfam_table.txt",
+    output:
+        RNA = IN_PATH + "/GenePrediction/RNA/{sample}_RNA_stats.txt",
+    run:
+        shell("echo {wildcards.sample} > {output.RNA}") 
+        shell("wc -l {input.tRNAscan} | cut -f 1 -d ' ' >> {output.RNA}") ## tRNA
+        shell("grep -c rRNA {input.barrnap} >> {output.RNA}") ## rRNA
+        shell("grep -c microRNA {input.Rfam} >> {output.RNA}") ## miRNA
+        shell("grep -c 'Small nucleolar' {input.Rfam} >> {output.RNA}") ##snoRNA
+
+
+rule MergeRNA:
+    input:
+        RNA = expand(IN_PATH + "/GenePrediction/RNA/{sample}_RNA_stats.txt", sample=SAMPLES),
+    output:
+        head = IN_PATH + "/GenePrediction/RNA/All_samples_RNA_header.xls", 
+        RNA = IN_PATH + "/GenePrediction/RNA/All_samples_RNA_stats.xls",
+    run:
+        Files = " ".join(sorted(input.RNA))
+        shell("echo Sample > {output.head}")
+        shell("echo tRNA >> {output.head}")
+        shell("echo rRNA >> {output.head}")
+        shell("echo miRNA >> {output.head}")
+        shell("echo snoRNA >> {output.head}")
+        shell("paste {output.head} {Files} > {output.RNA}")
 
 
 
@@ -611,9 +686,7 @@ rule tRNAscanPan:
 
 
 
-
-
-
+'''
 rule hisatEachCPG01:
     input:
         ht = IN_PATH + "/GenePrediction/RNA/HisatIndex/{sample}_hisat.1.ht2",
@@ -658,6 +731,133 @@ rule BAMStatsCPG01:
         shell("samtools flagstat --threads {threads}  {input.bam} > {output.stat} 2>{log}")
 
 
+'''
 
+
+
+rule gtf:
+    input:
+        gff = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gff3",
+    output:
+        gtf = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gtf",
+    run:
+        shell("gffread  {input.gff} -T -o {output.gtf}")
+
+
+rule STARIndex:
+    input:
+        scaffold = IN_PATH + "/Scaffold/{sample}.genome.fasta",
+        gtf = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gtf",
+    output:
+        SA = IN_PATH + "/GenePrediction/STARIndex/{sample}/SA",
+    params:
+        outDir = IN_PATH + "/GenePrediction/STARIndex/{sample}",
+        tempDir = IN_PATH + "/GenePrediction/TempDir/{sample}",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/STARIndex_{sample}.log"
+    run:
+        if not os.path.exists(params.outDir):
+            os.makedirs(params.outDir)
+        shell("STAR --runThreadN {threads} --genomeSAindexNbases 13 --runMode genomeGenerate --genomeDir {params.outDir} --genomeFastaFiles {input.scaffold} --sjdbGTFfile {input.gtf} --sjdbOverhang 149 --outTmpDir {params.tempDir}  > {log} 2>&1")
+
+
+
+
+
+rule STAR:
+    input:
+        R1 = IN_PATH + '/clean/{sample}.RNA.R1.fq.gz',
+        R2 = IN_PATH + '/clean/{sample}.RNA.R2.fq.gz',
+        SA = IN_PATH + "/GenePrediction/STARIndex/{sample}/SA",
+    output:
+        bam = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam',
+    params:
+        IndexDir = IN_PATH + "/GenePrediction/STARIndex/{sample}",
+        outDir = IN_PATH + '/RNA/NGS/mapping/{sample}',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/STAR/{sample}.log"
+    run:
+        if not os.path.exists(params.outDir):
+            os.makedirs(params.outDir)
+        shell(' STAR --runThreadN {threads} --genomeDir {params.IndexDir}  --readFilesIn {input.R1}  {input.R2}  --readFilesCommand gunzip -c --outSAMtype BAM SortedByCoordinate --outFileNamePrefix {params.outDir}   > {log} 2>&1')
+        shell("samtools index {output.bam}")
+
+
+
+
+rule StarIndex:
+    input:
+        bam = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam',
+    output:
+        bai = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam.bai',
+    run:
+        shell("samtools index {input.bam}")        
+
+
+
+rule BAMStats2:
+    input:
+        bam = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam',
+        bai = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam.bai',
+    output:
+        stat = IN_PATH + '/RNA/NGS/mapping/{sample}.bam_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats2_{sample}.log"
+    run:
+        shell("samtools stats --threads {threads} {input.bam} > {output.stat} 2>{log}")
+
+rule BAMStats3:
+    input:
+        bam = IN_PATH + "/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam",
+        bai = IN_PATH + '/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam.bai',
+    output:
+        stat = IN_PATH + '/RNA/NGS/mapping/{sample}_bam_flag_stats.xls',
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/BAMStats3_{sample}.log"
+    run:
+        shell("samtools flagstat --threads {threads} -O tsv {input.bam} > {output.stat} 2>{log}")
+
+
+
+
+
+rule featureCount:
+    input:
+        IN_PATH + "/RNA/NGS/mapping/{sample}Aligned.sortedByCoord.out.bam",
+    output:
+        IN_PATH + '/RNA/NGS/Counts/{sample}_Reads_count.xls'
+    threads:
+        THREADS
+    log:
+        IN_PATH + '/log/{sample}_featurecount.log'
+    params:
+        feature_type = "exon", # "gene",  #config['feature_type'],
+        feature_attribute = "Parent", # "ID", # config['feature_attribute'],
+        GFF = IN_PATH + "/GenePrediction/Gene/{sample}/{sample}.gene.gff3",
+    run:
+        shell('featureCounts -T {threads} -d 50 -D 1000 -C -s 0 -t {params.feature_type} -g {params.feature_attribute} --primary -O -M --fraction -a {params.GFF} -o {output} {input} > {log} 2>&1' )
+
+
+
+rule merge_featurecount:
+    input:
+        expand(IN_PATH + '/RNA/NGS/Counts/{sample}_Reads_count.xls', sample=SAMPLES)
+    output:
+        IN_PATH + '/RNA/NGS/Counts/All_samples_reads_counts.xls',
+    params:
+        merge_featurecount = SCRIPT_DIR + '/merge_featurecount.py'
+    log:
+        IN_PATH + '/log/All_reads_counts.log',
+    run:
+        INPUT = ','.join(input)
+        shell('python {params.merge_featurecount} -i {INPUT} -o {output}')
 
 
