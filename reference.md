@@ -83,3 +83,40 @@ was used
 to extract the conserved sequences among the 28 genomes. Seqkit (v2.1.0)76
 was used to concatenate sequences for phylogenetic analysis.
 
+
+
+### Analysis of tandem repeat clusters 
+We used StainedGlass v0.4 (https://github.com/mrvollger/StainedGlass) to identify repeat sequence clusters. The genomic distribution of repeat sequences was visualized using HiGlass v0.10.1 (https://github. com/higlass/higlass) and HiGlass Manage (https://github.com/higlass/ higlass-manage) with the gene annotation track (https://github.com/ higlass/gene_annotations).
+
+
+### Transcriptome assembly for gene modelling 
+The transcriptome assembly was performed using a combination of genome-guided and de novo approaches. The genome-guided approach used StringTie v2.1.4 (https://github.com/gpertea/stringtie) with aligned reads from HiSat2 v2.1.0 (https://github.com/DaehwanKimLab/hisat2). For the de novo approach, we first ran Trinity v2.8.5 with default parameters, followed by running TransAbyss v2.0.1 (https://github.com/bcgsc/transabyss) for multiple k-mers (51, 61, 71, 81, 91 and 101). The resulting files from both approaches were merged to generate a single high-confidence transcriptome assembly using EvidentialGene v2022.01.20 (https://sourceforge.net/projects/evidentialgene/). This approach was repeated for six RNA-seq libraries (DRR461683–DRR461688).
+
+
+### Gene model prediction 
+Gene model prediction was performed using a combination of ab initio and homology-based approaches. First, six transcriptome assemblies were splice-aligned against the genome using PASA v2.3.3 (https://github.com/PASApipeline/PASApipeline). The longest ORFs from these PASA alignments were also extracted using TransDecoder v.5.5.0. Next, we used the ab initio gene prediction tool GeneMark-ES v4.65 (ref. 98) and Braker v2.1.2 (https://github.com/Gaius-Augustus/ BRAKER) to produce two separate sets of candidate gene models on the reference genome soft-masked by RepeatMasker as described above. The initial RNA-seq alignments for Braker were produced using STAR aligner v2.7.2b (https://github.com/alexdobin/STAR). The final prediction step in Braker was carried out using Augustus v3.3.2 (https://github.com/Gaius-Augustus/Augustus). Braker was run for six RNA-seq libraries. The homology-based predictor GeMoMa v1.6.1 (ref. 99) was used to produce two additional sets of candidate gene models using gene models from Arabidopsis thaliana (Athaliana_167_TAIR10 from Phytozome) and Populus trichocarpa (Ptrichocarpa_444_v3.1 from Phytozome). All candidate gene models were then combined to form a single high-quality set of 34,010 gene models using EVidenceModeler v1.1.1 (https://github.com/EVidenceModeler/EVidenceModeler). The completeness of gene models was evaluated with BUSCO v5.3.2 (https://gitlab.com/ezlab/busco). The male gene models were transferred to the female genome assembly using GeMoMa.
+
+
+### Analysis of synteny and WGD 
+Syntelogs between homologous Nepenthes chromosomes were identified using JCVI v1.2.7 (https://github.com/tanghaibao/jcvi) with the MCscan pipeline. The identification of syntelogs between species was performed using SynMap2 (https://genomevolution.org/wiki/ index.php/SynMap2), which internally uses LAST for sequence alignments104
+, and then fractionation bias was analysed with FractBias26 .
+The reproducible links are as follows: Vitis versus Nepenthes (https:// genomevolution.org/r/1myic) and Vitis versus Coffea (https://genomevolution.org/r/1myu9). Synonymous divergence of paralogous pairs was obtained using WGDdetector v1.1 (ref. 105).
+
+
+
+
+### Species tree inference 
+A total of 1,614 single-copy genes conserved in land plants were searched in the genomes and transcriptomes from the 20 species using BUSCO with the Embryophyta dataset in OrthoDB v10 (embryophyta_odb10).
+All genes marked as single-copy (S) or fragmented (F) were extracted, while those marked as duplicated (D) or missing (M) were treated as missing data (Supplementary Fig. 29). In-frame codon alignments were created by aligning translated protein sequences with MAFFT v7.475 (ref. 110), trimming by ClipKIT v1.3.0 (https://github.com/JLSteenwyk/ ClipKIT) and back-translation by CDSKIT v0.10.2 (https://github.com/ kfuku52/cdskit). For each single-copy gene, nucleotide and protein ML trees were generated using IQ-TREE v2.2.0.3 (https://github.com/iqtree/ iqtree2) with the GTR+R4 model and the LG+R4 model, respectively. The collection of 1,614 single-copy gene trees was subjected to the coalescence-based species tree inference with ASTRAL v.5.7.3 (https:// github.com/smirarab/ASTRAL). In addition, concatenated alignments were generated with catfasta2phyml v2018-09-28 (https://github.com/ nylander/catfasta2phyml) and used as input to IQ-TREE for nucleotide and protein ML tree inference with the above substitution models. Amborella trichopoda was used as the outgroup for rooting.
+
+
+### Divergence time estimation 
+Divergence time estimation was performed with, as input, the ML species tree and the concatenated codon alignment of single-copy genes. Fossil constraints used in previous studies111,112
+were introduced with NWKIT v0.11.2 (https://github.com/kfuku52/nwkit). Species divergence was estimated with MCMCTREE in the PAML package v4.9 (https://github.com/abacus-gene/paml). Priors and parameters were chosen as described in a tutorial (http://abacus.gene.ucl.ac.uk/ software/paml.html). Branch lengths and substitution model parameters were pre-estimated using BASEML with a global clock using the GTR+G model.
+
+
+### Comparative genomic analysis
+Gene family clustering was performed using Orthofinder (option: -M msa) [53] based on the protein sequences of 14 species. Common single-copy genes were used to construct a maximum likelihood phylogenetic tree using Randomized Axelerated Maximum Likelihood (RAxML) software (model: PROTGAMMAWAG) [54]. The divergence times of the selected species were estimated using the MCMCtree subroutine of Phylogenetic Analysis by Maximum Likelihood (PAML; option: nsample: 3000000, burn: 8000000, seqtype: 0, model: 4) [55]. The Computational Analysis of gene Family Evolution (CAFE) was used to predict the contraction and expansion of gene families. MCScanX (option: -a -e 1e−5 -s) was used to analyze the genome collinearity. The ratio of the number of nonsynonymous substitutions per nonsynonymous site/Ks(Ka/Ks) values of the collinear gene pairs were calculated using the yn00 module in PAML.
+
+
+

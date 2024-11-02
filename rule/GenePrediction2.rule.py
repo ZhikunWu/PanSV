@@ -520,13 +520,15 @@ rule MergeProtein:
 
 
 
+'''
+
 rule EVidenceModeler:
     input:
         genome = IN_PATH + "/Scaffold/{sample}.genome.fasta",
         augustus = IN_PATH + "/GenePrediction/augustus/{sample}_augustus.gff",
         stringtie = IN_PATH + "/GenePrediction/RNA/Stringtie/{sample}/{sample}_RNA_stringtie.fasta.transdecoder.genome.gff3",
         miniprot = IN_PATH + "/GenePrediction/homo/miniprot/{sample}_align_addID.gff",
-        repeat = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out.gff"
+        #repeat = IN_PATH + "/Repeats/repeatMasker/{sample}/{sample}.genome.fasta.out.gff"
     output:
         evidence = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.evm.out",
         EVM = IN_PATH + "/GenePrediction/evidencemodeler/{sample}/{sample}.EVM.gff3",
@@ -541,7 +543,8 @@ rule EVidenceModeler:
         ### EVidenceModeler --sample_id CPG11 --segmentSize 100000 --overlapSize 10000  --genome /home/wuzhikun/Project/PanSV/Scaffold/CPG11.genome.fasta  --weights /home/wuzhikun/Project/BAssembly/pipeline/evidencemodeler/Trans_weight.txt --gene_predictions  /home/wuzhikun/Project/PanSV/GenePrediction/augustus/CPG11_augustus.gff --protein_alignments  /home/wuzhikun/Project/PanSV/GenePrediction/homo/miniprot/CPG11_align.gff --transcript_alignments  /home/wuzhikun/Project/PanSV/GenePrediction/RNA/Stringtie/CPG11/CPG11_RNA_stringtie.gtf  --repeats /home/wuzhikun/Project/PanSV/Repeats/repeatMasker/CPG11/CPG11.genome.fasta.out.gff --CPU 16  > /home/wuzhikun/Project/BAssembly/pipeline/evidencemodeler/CPG11.evm.out 2>CPG11.evm.out.log  
         if not os.path.exists(params.outDir):
             os.makedirs(params.outDir)
-        cmd = "source activate Anno &&  cd %s &&  EVidenceModeler --sample_id %s --segmentSize 100000 --overlapSize 10000  --genome %s  --weights %s --gene_predictions  %s --protein_alignments  %s --transcript_alignments  %s  --repeats %s --CPU %s  > %s 2>%s " % (params.outDir, wildcards.sample, input.genome, params.weight, input.augustus, input.miniprot, input.stringtie, input.repeat, threads, output.evidence, log)
+        ### --repeats %s
+        cmd = "source activate Anno &&  cd %s &&  EVidenceModeler --sample_id %s --segmentSize 100000 --overlapSize 10000  --genome %s  --weights %s --gene_predictions  %s --protein_alignments  %s --transcript_alignments  %s   --CPU %s  > %s 2>%s " % (params.outDir, wildcards.sample, input.genome, params.weight, input.augustus, input.miniprot, input.stringtie, threads, output.evidence, log)
         print(cmd)
         os.system(cmd)
 
@@ -562,7 +565,7 @@ rule gffRename:
     run:
         shell("python {params.EvmGffRename} --gff {input.gff} --out {output.gff} --out2 {output.gene}")
 
-'''
+
 
 
 rule rename2:

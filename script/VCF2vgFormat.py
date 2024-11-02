@@ -73,7 +73,7 @@ def vcf_to_vg(vcf_file, fa_file, out_file):
             SVLength = Infor_target_values(Infor, "SVLEN")
             SVLength = int(SVLength.strip("-"))
             End = int(Infor_target_values(Infor, "END"))
-            if SVType in SVList and SVLength < 1000000:
+            if SVType in SVList and SVLength < 5000000:
                 if SVType == "DEL":
                     Alt = ChrSeq[Chr][Pos-1]
                     if Ref == "N":

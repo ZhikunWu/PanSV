@@ -81,6 +81,8 @@ rule Mergemultiple3:
 ###################################################################
 '''
 
+
+'''
 ############ graph pan SV ########
 
 rule sortedVCF:
@@ -99,25 +101,35 @@ rule VCF2vgFormatTest:
     input:
         vcf = IN_PATH + "/SVCall/Merge/All_samples_SV_merge_sorted.vcf",
     output:
-        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf.gz",
+        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf",
     params:
         RefGenome = "/home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta",
-        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf",
+        #vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf",
         VCF2vgFormat = SCRIPT_DIR + "/VCF2vgFormat.py",
     threads:
         THREADS
     log:
         IN_PATH + "/log/VCF2vgFormat.log"
     run:
-        shell("python {params.VCF2vgFormat} --vcf {input.vcf} --out {params.vcf} --fasta {params.RefGenome} > {log} 2>&1")
-        shell("bgzip {params.vcf}")
-        shell("tabix -p vcf {output.vcf}")
+        shell("python {params.VCF2vgFormat} --vcf {input.vcf} --out {output.vcf} --fasta {params.RefGenome} > {log} 2>&1")
+        #shell("bgzip {params.vcf}")
+        #shell("tabix -p vcf {output.vcf}")
+
+rule vcfSimple:
+    input:
+        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf",
+    output:
+        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat_simple.vcf",
+    params:
+        VcfSimple = SCRIPT_DIR + "/VcfSimple.py",
+    run:
+        shell("python {params.VcfSimple} --vcf {input.vcf} --out {output.vcf}")
 
 
 
 rule simpleVGtest:
     input:
-        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf.gz",
+        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat_simple.vcf",
     output:
         vg = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_construct.vg",
     threads:
@@ -138,7 +150,7 @@ rule simpleVGtest:
 
 rule GiraffeIndex:
     input:
-        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat.vcf.gz",
+        vcf = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_vgformat_simple.vcf",
     output:
         dist = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_giraffe.dist",
         gbz = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_giraffe.giraffe.gbz",
@@ -171,7 +183,7 @@ rule snarls:
         THREADS
     run:
         shell("/home/wuzhikun/software/vg snarls -t {threads} {input.gbz} > {output.snarls}")
-
+'''
 
 
 
@@ -186,7 +198,7 @@ rule Giraffe:
         R1 = IN_PATH + "/clean/{sample}_NGS.R1.fastq.gz",
         R2 = IN_PATH + "/clean/{sample}_NGS.R2.fastq.gz",
     output:
-        gam = IN_PATH + "/SVCall/Giraffe/{sample}.giraffe.gam",
+        gam = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.gam",
     threads:
         THREADS
     log:
@@ -197,6 +209,64 @@ rule Giraffe:
 
 
 
+
+
+
+
+
+rule pack:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_giraffe.giraffe.gbz",
+        gam = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.gam",
+    output:
+        pack = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.pack",
+    threads:
+        THREADS
+    log:
+        IN_PATH + "/log/pack_{sample}.log"
+    run:
+        shell("/home/wuzhikun/software/vg pack -t {threads} -x {input.gbz} -g {input.gam} -Q5 -o {output.pack} > {log} 2>&1")
+
+
+
+
+rule gamstat:
+    input:
+        gam = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.gam",
+    output:
+        stats = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.stats.txt",
+    run:
+        shell("/home/wuzhikun/software/vg stats -a {input.gam} > {output.stats}")
+
+
+
+rule call:
+    input:
+        gbz = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_giraffe.giraffe.gbz",
+        snarls = IN_PATH + "/SVCall/PanGraph3/All_samples_SV_merge_giraffe.giraffe.snarls.pb",
+        pack = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.pack",
+    output:
+        vcf = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.vcf.gz",
+    params:
+        vcf = IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.vcf",
+    threads:
+        THREADS
+    run:
+        shell("/home/wuzhikun/software/vg call -t {threads} -k {input.pack} --min-support 2,2 -z -a -r {input.snarls} -z -s {wildcards.sample} {input.gbz} > {params.vcf}")
+        shell("bgzip {params.vcf}")
+        shell("tabix -p vcf {output.vcf}")
+
+
+
+
+rule mergeSV:
+    input:
+        vcf = expand(IN_PATH + "/SVCall/Giraffe3/{sample}.giraffe.vcf.gz", sample=SAMPLES),
+    output:
+        vcf = IN_PATH + "/SVCall/Giraffe3/Sample884.giraffe.merge.vcf",
+    run:
+        files = " ".join(sorted(input.vcf))
+        shell("bcftools merge --threads 24  {files} > {output.vcf} ")
 
 
 ###########################################

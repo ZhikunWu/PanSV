@@ -3,8 +3,8 @@ SCRIPT_DIR: /home/wuzhikun/github/PanSV/script
 RULE_DIR: /home/wuzhikun/github/PanSV/rule
 #SRC_DIR: /home/wuzhikun/github/PanSV/src
 
-project_path: /home/wuzhikun/Project/PanVigna
-THREADS: 20
+project_path: /home/wuzhikun/Project/PanSV
+THREADS: 8
 ThreadFold: 1
 Memory: "-Xmx30g"
 
@@ -43,46 +43,21 @@ pilon: /home/wuzhikun/anaconda3/envs/Assembly3/pilon-1.23.jar
 RefGenome: /home/wuzhikun/Project/Vigna/Final/Final/Vigna_unguiculata_assembly.fasta
 
 SAMPLES:
+  - CPG03
+
+
+SAMPLES0:
   - A3-15
-
-
-SAMPLESo:
-  #- CPG01
-  #- CPG02
-  #- CPG03
-  #- CPG05
-  #- CPG06
-  #- CPG08
-  #- CPG09
-  #- CPG10
-  #- CPG11
-  #- CPG12
-  #- CPG13
-  #- CPG14
-  #- CPG15
+  - CPG03
+  - CPG05
+  - CPG06
+  - CPG10
+  - CPG11
+  - CPG13
+  - CPG15
   - CPG16
   - CPG17
-  - CPG18
-  - CPG19
-  - CPG20
-  - CPG21
-  - CPG22
-  - CPG23
-  - CPG24
-  - CPG25
-  - CPG27
-  - CPG28
-  #- CPG29
-  - CPG30
-  - CPG31
-  - CPG32
-  - CPG33
-  #- CPG34
-  - CPG35
-  - CPG36
-  #- CPG37
-  - Ni933
-  - SPS1
+
 
 
 CHRS:
